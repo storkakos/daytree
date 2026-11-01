@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-01
+
+Daytree now shows when the bins go out.
+
+### Added
+
+- A waste collection calendar: upload an ICS file, pick a color per collection and see small bins for the next 7 days.
+  The file is stored encrypted, and changes reach open homepages without a reload.
+
+## [0.11.0] - 2026-11-01
+
+The homepage gets a weather forecast and becomes a self-updating screen.
+
 ### Changed
 
 - Weather icons come from Bonjourr, look the same in every browser and have night versions.
@@ -16,7 +29,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The homepage takes over settings changed on another device within 30 seconds and reloads itself after an app update.
 - `/kiosk` shows the homepage for a fixed screen: tasks are read-only and there is no access to the settings.
-- A waste collection calendar: upload an ICS file, pick a color per collection and see small bins for the next 7 days.
 - The background photo can change after a custom number of minutes.
 - A weather forecast above the day view, for the next 10 hours or 7 days. Choose it under Settings → Weather.
 
@@ -81,6 +93,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.10.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.12.0...dev
+[0.12.0]: https://github.com/storkakos/daytree/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/storkakos/daytree/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/storkakos/daytree/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/storkakos/daytree/releases/tag/v0.9.0
