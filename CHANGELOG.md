@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The homepage stayed empty on older browsers (Chromium 56 and similar).
+  Homepage and settings no longer depend on newer JavaScript and CSS features.
+
 ## [0.10.0] - 2026-11-01
 
 The project is now called Daytree and has grown from a calendar export into a home calendar app.
