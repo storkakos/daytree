@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Greeting with your name, and current weather from Open-Meteo.
 - Analog clock, seconds, clock size, font family, font size and font weight settings.
 - Settings panel on the homepage that saves changes immediately and shows them live.
+- About section in the settings, with project links and the version.
 
 ### Changed
 

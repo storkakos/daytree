@@ -102,6 +102,7 @@ r = c.get("/settings").data
 assert b'<option value="30" >0.5 h</option>' in r and b'<option value="1440" selected>24 h</option>' in r
 assert r.count(b"<option value=") >= 48
 assert b"Every 24 h" in c.get("/settings").data
+assert A.VERSION.encode() in c.get("/settings").data and b'class="about"' in c.get("/settings").data
 assert b"PLAINPW-123" not in (data / "settings.enc").read_bytes()
 ok("login, calendar list, selection, interval minimum")
 
