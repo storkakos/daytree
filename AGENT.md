@@ -1,8 +1,8 @@
 # AGENT.md — instructions for the implementing AI agent
 
 Read this file completely before touching anything. It is the single source of truth for what this
-repository must do, what has already been built, what has **not** been verified, and what you are
-expected to do next. Everything in this repository (code, UI strings, comments, docs, commit
+repository must do, what has already been built and what has **not** been verified. Planned work is
+tracked in GitHub issues. Everything in this repository (code, UI strings, comments, docs, commit
 messages) must be written in **English**.
 
 ---
@@ -14,7 +14,8 @@ A small, self-hosted Docker service that:
 1. Exports a **TimeTree** calendar to an **iCalendar (`.ics`)** file on a schedule.
 2. Serves that file under a secret-token URL so **Microsoft Outlook** can subscribe to it
    ("Add calendar → Subscribe from web").
-3. Provides a **web dashboard** with sync status, upcoming events and a separate **Settings** menu.
+3. Provides a **homepage** with events, tasks, weather and waste collection, a read-only `/kiosk` view for
+   fixed screens, and a separate **Settings** menu with the sync status.
 4. Optionally exposes the dashboard and/or the ICS file to the internet through a **Cloudflare tunnel**
    that is started from inside the container using a tunnel token entered in the dashboard.
 5. Stores **no secret in plaintext**, anywhere.
@@ -52,7 +53,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 | Decision | Rationale |
 |---|---|
 | **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. **Do not add app-level auth unless the user asks.** |
-| All UI strings/docs in **English**. | "Everything must be in English." German i18n is an optional future feature, not required. |
+| Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `i18n.py`. |
 | Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
 | Exposure mode (**off / ICS only / dashboard read-only**) is **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
 | One container, Flask, **no database**. | Keep it slim. State = one encrypted settings file + one ICS file + a small status JSON. |
@@ -75,13 +76,13 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | Path | Purpose |
 |---|---|
 | `app.py` | The whole backend: encryption, settings, sync scheduler, tunnel supervisor, access guard, routes. |
-| `templates/kiosk.html` | Homepage: agenda, week, tasks, reminders and setup popup. Vanilla JS, responsive for landscape and portrait. |
+| `templates/kiosk.html` | Homepage and `/kiosk`: agenda, week, tasks, reminders, weather forecast, waste collection and setup popup. Vanilla JS, responsive for landscape, portrait and phones. |
 | `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service; **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.txt` | `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `i18n.py` | German translations. English strings are the keys. |
-| `static/` | Favicon and home screen icon. |
+| `static/` | Logo, favicon, home screen icon and weather icons (`weather-sprites.svg`, from Bonjourr). |
 | `tests/smoke_test.py` | End-to-end logic test (no network/Docker). Prints `ALL OK`. Needs Linux (file modes, fake `cloudflared`). |
 | `tests/port_check.py` | Checks internal/public port detection against the running container. Prints `ALL OK`. |
 | `.env.example` | Only `PORT` and an optional `SECRET_KEY`. **No credentials belong in env files.** |
@@ -92,10 +93,12 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 |---|---|---|
 | `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
+| `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
 | `/data/timetree.ics` | Latest successful export. Replaced atomically only on success. | **Not encrypted** (it must be served; contains event titles) |
 | `/data/event_colors.json` | Event UID to TimeTree color, for the homepage bullets. `fix_ics()` removes COLOR from the published feed. | Plain, contains no secrets |
 | `/data/state.json` | Last run / success time, event count, last message. | Plain, contains no secrets |
+| `/data/background.json` | Current photos and when they were fetched, so a restart does not change them. | Plain, contains no secrets |
 
 Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated to `settings.enc` and deleted on startup.
 
@@ -105,11 +108,12 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 |---|---|---|
 | `GET /` kiosk homepage with first-time setup popup | yes | only in mode `dashboard` (read-only view: no settings gear, no tasks, no setup popup) |
 | `GET /api/events` | yes | only in mode `dashboard` |
+| `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | only in mode `dashboard` (without tasks) |
 | `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
-| `GET /api/config`, `/api/background`, `/api/weather` | yes | only in mode `dashboard` (the greeting name is removed) |
+| `GET /api/config`, `/api/background`, `/api/weather`, `/api/waste` | yes | only in mode `dashboard` (the greeting name is removed) |
 | `POST /api/background/refresh` | yes | never |
 | `POST /sync` | yes | never |
-| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/tunnel` | yes | never |
+| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel` | yes | never |
 | `GET /api/status` | yes | only in mode `dashboard` |
 | `GET /calendar.ics?token=…` | yes (token required) | modes `ics` and `dashboard` (token required) |
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, in every mode |
@@ -149,7 +153,7 @@ All state-changing requests additionally require a same-origin `Origin`/`Referer
   (static → runs on Alpine); reads `TUNNEL_TOKEN` from the environment; logs the line
   `Registered tunnel connection` when a connection is established (used for the "connected" status).
 - `gottfried1980/timetable-docker` is a separate TV/kiosk dashboard with its own TimeTree sync
-  (session cookie, German UI). It is **not integrated**; see "Open questions".
+  (session cookie, German UI). It is **not integrated**.
 
 ---
 
@@ -185,6 +189,7 @@ real TimeTree/Cloudflare credentials**.
 - Login flow, calendar list (deactivated calendars filtered), calendar selection, interval clamping.
 - CSRF origin check.
 - Exposure modes `off` / `ics` / `dashboard` on the public side, and Cloudflare-header detection on port 8080.
+- Tasks, languages and date formats, the waste collection calendar, and background and weather handling.
 - Tunnel token extraction from a pasted command, start/stop supervision, token delivered via `TUNNEL_TOKEN` only,
   token absent from HTML and from the encrypted file's plaintext, status `connected`.
 
@@ -195,25 +200,15 @@ real TimeTree/Cloudflare credentials**.
    is believed to be hours and not controllable from the server; this was not measured. A subscription
    shows all events in one calendar color. The owner decided against one ICS per label.
 3. Scheduler timing and the exporter timeout path have no automated test.
+4. **Browsers**: there is no automated browser test. The homepage has been tested in current headless Chromium, and
+   by the owner on their screens. Chromium 56 itself was not run here.
 
 ---
 
-## 5. Your tasks (in this order)
+## 5. Planned work
 
-1. **Build and run**: `docker compose up -d --build`. Fix any build/runtime problem with minimal changes.
-   Keep the image slim (Alpine, no compiler toolchain in the final image; if a wheel is missing, use a
-   multi-stage build rather than installing build tools in the final stage).
-2. **Run the smoke test without stand-ins**: `pip install -r requirements.txt && python tests/smoke_test.py`.
-3. **Add a gunicorn-based test** (or a documented manual check) proving that requests on port 8081 are
-   treated as public and on 8080 as internal. If `SERVER_PORT` is unreliable, switch `is_public()` to a
-   mechanism that is verified to work, keeping fail-closed behaviour.
-4. **Verify event parsing** against real or realistic exporter output (create fixtures if no account is available).
-5. **Manual end-to-end check with the owner** (ask for credentials/token interactively; never store them
-   in the repo, logs or test fixtures): sign in, list calendars, sync, subscribe in Outlook, start the tunnel
-   in each of the three modes and confirm that only the intended paths respond.
-6. Optional hardening/QA: convert `tests/smoke_test.py` into `pytest`, add CI (lint, tests, `docker build`),
-   pin `CLOUDFLARED_TAG` to a concrete version.
-7. **Update section 4 of this file and the README** with what you actually verified.
+Planned work is tracked in [GitHub issues](https://github.com/storkakos/daytree/issues). Work in the order their
+dependencies give. After a change, update section 4 of this file with what you actually verified.
 
 ### Acceptance criteria
 
@@ -233,29 +228,72 @@ real TimeTree/Cloudflare credentials**.
 
 ## 6. Rules for working in this repo
 
-- **English only** — code, comments, docs, commit messages. UI strings are written in English and translated in
+### Language
+
+- Python is the project's language for the backend, tools and tests. The homepage and settings stay plain HTML, CSS
+  and JavaScript in `templates/`, with no build step.
+- **English only** — code, comments, docs, commit messages, issues and pull requests. Translate anything written in
+  German into English. German is only the app's second language: UI strings are written in English and translated in
   `i18n.py`; every string needs a German entry (checked by the smoke test).
+
+### Security
+
 - Never introduce plaintext secret storage, never log secrets, never put secrets in argv, env files,
   compose files, templates or test fixtures. Redact tokens in any error output you add.
 - Do not publish port 8081 in `docker-compose.yml`.
 - Do not add a login/auth system, a database, or a JS framework without the owner's explicit request.
-- The project is GPL-3.0 since the release after 0.9.0. Code from Bonjourr (GPL-3.0) may be reused with credit.
+- Every new route goes into the access test. Routes are closed by default, and opening one is the exception.
+- Do not change the exposure-mode semantics without updating the UI text, README, the smoke test and this file.
+- The repo is public. No device names, IP addresses or personal data in code, commits, issues or screenshots.
+
+### Architecture
+
+- Keep the single-worker constraint.
+- Keep dependencies minimal; every new package must be justified (image size).
 - Background and weather lookups are the only outgoing calls besides TimeTree. They must fail quietly and never
   use Bonjourr's own backend.
-- Keep dependencies minimal; every new package must be justified (image size).
-- Do not change the exposure-mode semantics without updating the UI text, README, the smoke test and this file.
-- Keep the single-worker constraint.
-- When you finish a task, run `tests/smoke_test.py`.
-- Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
-  and very large changes the first number (`+.x.x`).
+- The project is GPL-3.0 since the release after 0.9.0. Code from Bonjourr (GPL-3.0) may be reused with credit.
+- The oldest supported browser is Chromium 56. Do not use object spread, CSS grid, `clamp()`, `min()`, `max()`,
+  `inset`, flex `gap` or alpha hex colors on the homepage.
+- Updates must not break an installation. New settings need a default that keeps the previous behavior, and breaking
+  changes need a migration and a changelog note.
+
+### Workflow
+
+- Do not work without an issue. Every change belongs to one, and every commit names its number, for example `#19`.
+- One issue can have several commits, but one commit must not belong to several issues.
+- Settle open questions in an issue before building it.
+- Use one branch per issue, for example `feature/19-waste-bins`. It goes by pull request into `dev`, then `dev` goes
+  into `main`. The pull request closes the issue with `Closes #19`.
+- The owner approves every merge.
+
+### Quality
+
+- When you finish a task, run `tests/smoke_test.py`. It needs Linux.
+- Every bug gets a test: reproduce the fault first, then fix it.
+- A fix is finished only after it was checked in the real app. Say plainly what could not be checked.
 - Always check `README.md` after a change and update it when it no longer matches the app.
+- Add every visible change to `CHANGELOG.md` under `Unreleased` right away, not at release time.
+
+### Releases
+
+- Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
+  and very large changes the first number (`+.x.x`). Changes to text only get no release.
+- Release steps, in this order:
+  1. Create the branch `release/x.y.z` from `dev`.
+  2. Set `VERSION` in `app.py`, and move `Unreleased` in `CHANGELOG.md` to a section with the version and date.
+  3. Run `tests/smoke_test.py` and check `README.md`.
+  4. Merge by pull request into `dev`, then `dev` into `main`.
+  5. Tag the merge commit on `main` with an annotated tag: `git tag -a vx.y.z -m "Release x.y.z"`.
+  6. Publish a GitHub release. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release. From 1.0.0 on name it
+     `vx.y.z` and publish it as a normal release. Use the changelog section as the text and add upgrade notes.
 
 ---
 
 ## 7. Open questions for the owner (do not decide these yourself)
 
 Decided by the owner: the homepage is a TV/kiosk view for landscape and portrait screens, without an
-Austrian or regional calendar, photos or music. Multiple calendars are planned for later: one ICS token per
+Austrian or regional calendar or music. Multiple calendars are planned for later: one ICS token per
 calendar, and a choice of which calendars appear on the homepage.
 
 1. Should Settings ever be reachable through the tunnel (currently never; internal only)?
