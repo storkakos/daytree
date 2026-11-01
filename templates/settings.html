@@ -189,7 +189,7 @@
           <label for="background_brightness">{{ _("Brightness") }}</label>
           <input id="background_brightness" class="slider" type="range" name="background_brightness" min="20" max="100" value="{{ s.background_brightness }}">
         </div>
-        <button type="button" class="action" id="new-photo">{{ _("New photo") }}</button>
+        <button type="button" class="action" id="new-photo">{{ _("Apply") }}</button>
       </div>
       <p>{{ _("Photos come from Lorem Picsum.") }}</p>
     </section>
@@ -215,25 +215,6 @@
       <p>{{ _("Other fonts are loaded from Google Fonts.") }}</p>
     </section>
     <noscript><button class="action">{{ _("Save") }}</button></noscript>
-  </form>
-
-  <form method="post" action="{{ url_for('settings_waste') }}" enctype="multipart/form-data" class="group" id="waste-form">
-    <h2>{{ _("Waste collection") }}</h2>
-    <div class="card">
-      <div class="row">
-        <label for="waste_enabled">{{ _("Show waste collection") }}</label>
-        <span class="switch"><input id="waste_enabled" type="checkbox" name="waste_enabled" value="1" {{ 'checked' if s.waste_enabled }}><span></span></span>
-      </div>
-      <div class="row stack">
-        <label for="waste_file">{{ _("Calendar file (.ics)") }}</label>
-        <input id="waste_file" type="file" name="waste_file" accept=".ics,text/calendar">
-      </div>
-      {% for title, color in waste %}
-      <div class="row"><label for="waste_color_{{ loop.index0 }}">{{ title }}</label><input id="waste_color_{{ loop.index0 }}" class="swatch" type="color" name="waste_color_{{ loop.index0 }}" value="{{ color }}"></div>
-      {% endfor %}
-      {% if waste %}<button class="action destructive" name="remove" value="1">{{ _("Remove calendar") }}</button>{% endif %}
-    </div>
-    <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin on collection days.") }}</p>
   </form>
 
   <section class="group">
@@ -320,11 +301,6 @@
     document.documentElement.classList.add('embedded');
     document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); notify('close-settings'); });
   }
-  // A saved form reloads this page, so the homepage around it hears about the change here
-  if (location.search.includes('updated')) {
-    notify('settings-changed');
-    history.replaceState(null, '', location.pathname);
-  }
   const form = document.getElementById('display');
   let timer;
   let queue = Promise.resolve();
@@ -344,12 +320,6 @@
     notify('settings-changed');
   }
   form.addEventListener('submit', event => event.preventDefault());
-  const wasteForm = document.getElementById('waste-form');
-  // A new file changes the list of collections, so only that one reloads the page
-  wasteForm.addEventListener('change', event => {
-    if (event.target.type === 'file') wasteForm.submit();
-    else saveLater(wasteForm);
-  });
   form.addEventListener('change', autosave);
   form.addEventListener('input', event => {
     if (event.target.type !== 'range') return;

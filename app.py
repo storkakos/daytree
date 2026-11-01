@@ -3,7 +3,6 @@
 Single-process Flask app (run with exactly ONE gunicorn worker: state, scheduler and tunnel
 supervisor live in memory and in background threads).
 """
-import hashlib
 import hmac
 import json
 import os
@@ -27,7 +26,7 @@ from icalendar import Calendar
 
 from i18n import translate
 
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
@@ -35,7 +34,6 @@ STATE_FILE = DATA / "state.json"
 COLORS_FILE = DATA / "event_colors.json"   # event UID -> TimeTree color, for the homepage only
 SETTINGS_FILE = DATA / "settings.enc"      # fully encrypted (Fernet)
 BACKGROUND_FILE = DATA / "background.json"   # current photos, so a restart does not change them
-WASTE_FILE = DATA / "waste.enc"            # waste collection calendar, fully encrypted (Fernet)
 TASKS_FILE = DATA / "tasks.enc"            # fully encrypted (Fernet)
 LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, then deleted
 
@@ -116,8 +114,6 @@ DEFAULTS = {
     "weather_lon": None,
     "weather_unit": "celsius",  # celsius | fahrenheit
     "weather_forecast": "off",  # off | hours | days
-    "waste_enabled": False,
-    "waste_colors": {},         # collection name -> #rrggbb
     "background_type": "photo",  # photo | color
     "background_color": "#1c2733",
     "background_every": "hour",  # hour | day | fixed | custom
@@ -131,10 +127,6 @@ DEFAULTS = {
 
 SYSTEM_FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif'
 FONTS = {"system": None, "inter": "Inter", "nunito": "Nunito", "poppins": "Poppins", "lora": "Lora", "playfair": "Playfair Display"}
-WASTE_MAX_BYTES = 2 * 1024 * 1024
-# First match in the lowercase collection name; the user can change every color in the settings
-WASTE_COLORS = (("bio", "#8b5a2b"), ("papier", "#2f6fde"), ("paper", "#2f6fde"), ("gelb", "#f2c40f"), ("plast", "#f2c40f"),
-                ("rest", "#6b7280"), ("glas", "#2e9e5b"), ("glass", "#2e9e5b"))
 BACKGROUND_SECONDS = {"hour": 3600, "day": 86400, "fixed": float("inf")}
 WEATHER_TEXT = {
     "Clear sky": (0,),
@@ -221,6 +213,8 @@ apply_timezone()
 def language():
     if settings["language"] in LANGUAGES:
         return settings["language"]
+    if request.cookies.get("lang") in LANGUAGES:     # set by the homepage from the browser language
+        return request.cookies["lang"]
     return request.accept_languages.best_match(LANGUAGES) or LANGUAGES[0]
 
 
@@ -487,6 +481,14 @@ def guard():
 
 
 @app.after_request
+def no_stale_pages(response):
+    # Pages depend on the language and carry the app version, so a stored copy must never be shown
+    if response.mimetype == "text/html":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.after_request
 def log_ics_fetch(response):
     # Shows whether calendar services reach the app. The path only: the query string holds the token.
     if request.path == "/calendar.ics":
@@ -563,6 +565,8 @@ def display_config():
         font_url = f"https://fonts.googleapis.com/css2?family={urllib.parse.quote_plus(font)}:wght@300;400;500;600;700&display=swap"
     return {
         "language": language(),
+        "languageAuto": settings["language"] == "auto",
+        "languages": LANGUAGES,
         "locale": "de-DE" if language() == "de" else "en-GB",
         "hour12": settings["time_format"] == "12",
         "timeZone": effective_timezone(),
@@ -575,8 +579,6 @@ def display_config():
         "name": "" if is_public() else settings["greeting_name"],
         "weather": settings["weather_enabled"],
         "forecast": settings["weather_forecast"],
-        "waste": settings["waste_enabled"],
-        "wasteStamp": waste_stamp(),
         "backgroundType": settings["background_type"],
         "backgroundColor": settings["background_color"],
         "blur": settings["background_blur"],
@@ -623,7 +625,6 @@ def settings_page():
         intervals=[(m, _hours(m)) for m in range(MIN_MINUTES, MAX_MINUTES + 1, STEP_MINUTES)],
         timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
         default_timezone=DEFAULT_TZ or "UTC", fonts=FONTS, version=VERSION,
-        waste=[(title, waste_color(title)) for title in waste_types()],
         ics_local=local, ics_pub=pub, tunnel=_tunnel, public_port=PUBLIC_PORT,
     )
 
@@ -755,80 +756,6 @@ def settings_display():
         return jsonify(message=message, weather_city=settings["weather_city"])
     flash(message, "ok")
     return redirect(url_for("settings_page"))
-
-
-def waste_stamp():
-    """Changes with the file and the colors, so open homepages know when to redraw the bins. Reveals neither."""
-    modified = WASTE_FILE.stat().st_mtime if WASTE_FILE.exists() else 0
-    return hashlib.sha256(f"{modified}{sorted(settings['waste_colors'].items())}".encode()).hexdigest()[:12]
-
-
-def waste_calendar():
-    try:
-        return Calendar.from_ical(json.loads(FERNET.decrypt(WASTE_FILE.read_bytes()))["ics"])
-    except (OSError, InvalidToken, ValueError, KeyError):
-        return None
-
-
-def waste_types(calendar=None):
-    calendar = calendar or waste_calendar()
-    return sorted({str(event.get("SUMMARY", "")).strip() for event in calendar.walk("VEVENT")} - {""}) if calendar else []
-
-
-def waste_color(title):
-    if title in settings["waste_colors"]:
-        return settings["waste_colors"][title]
-    return next((color for word, color in WASTE_COLORS if word in title.lower()), "#9ca3af")
-
-
-def waste_days():
-    """The collections of the next 7 days, today first, one entry per day."""
-    today = date.today()
-    days = {today + timedelta(days=i): [] for i in range(7)}
-    calendar = waste_calendar()
-    for event in recurring_ical_events.of(calendar).between(today, today + timedelta(days=7)) if calendar else []:
-        start = _local(event.decoded("DTSTART"))
-        day = start.date() if isinstance(start, datetime) else start
-        title = str(event.get("SUMMARY", "")).strip()
-        if day in days and title and title not in [item["title"] for item in days[day]]:
-            days[day].append({"title": title, "color": waste_color(title)})
-    return [{"date": day.isoformat(), "bins": bins} for day, bins in days.items()]
-
-
-@app.post("/settings/waste")
-def settings_waste():
-    """Waste collection calendar: upload, remove, colors and whether the homepage shows it."""
-    upload = request.files.get("waste_file")
-    enabled = bool(request.form.get("waste_enabled"))
-    if request.form.get("remove"):
-        WASTE_FILE.unlink(missing_ok=True)
-        settings["waste_colors"] = {}
-        enabled = False
-    elif upload and upload.filename:
-        raw = upload.read(WASTE_MAX_BYTES + 1)
-        if len(raw) > WASTE_MAX_BYTES:
-            flash(_("The file is too large."), "err")
-            return redirect(url_for("settings_page"))
-        text = raw.decode("utf-8-sig", "replace")
-        try:
-            valid = bool(waste_types(Calendar.from_ical(text)))
-        except ValueError:
-            valid = False
-        if not valid:
-            flash(_("The file is not a usable calendar."), "err")
-            return redirect(url_for("settings_page"))
-        _write_encrypted(WASTE_FILE, {"ics": text})
-        enabled = True
-    for index, title in enumerate(waste_types()):
-        color = request.form.get(f"waste_color_{index}", "")
-        if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
-            settings["waste_colors"][title] = color
-    settings["waste_enabled"] = enabled
-    save_settings(settings)
-    if request.headers.get("X-Autosave"):
-        return jsonify(message=_("Settings saved."))
-    flash(_("Settings saved."), "ok")
-    return redirect(url_for("settings_page", updated=1))
 
 
 @app.post("/settings/tunnel")
@@ -977,11 +904,6 @@ def api_weather():
     return jsonify(enabled=True, temperature=_weather["temperature"], text=_(text), city=settings["weather_city"],
                    icon=weather_icon(_weather["code"], _weather["day"]),
                    hours=_weather["hours"], days=_weather["days"])
-
-
-@app.get("/api/waste")
-def api_waste():
-    return jsonify(enabled=True, days=waste_days()) if settings["waste_enabled"] else jsonify(enabled=False)
 
 
 @app.get("/api/config")

@@ -62,7 +62,6 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
 - **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
 - **Privacy:** credentials, tokens and tasks are stored encrypted. No database, no cloud service of ours.
-- **Waste collection:** upload an ICS file and see colored bins for the next 7 days.
 - **Fixed screens:** `/kiosk` shows the homepage read-only and updates itself after changes.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.

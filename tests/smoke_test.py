@@ -165,40 +165,6 @@ missing = (used | set(A.display_config_strings()) | set(A.WEATHER_TEXT)) - set(i
 assert not missing, missing
 ok("language, time zone and date formats; every UI string has a German translation")
 
-# ---- Waste collection calendar
-import io
-day = A.date.today().strftime("%Y%m%d")
-waste_ics = (
-    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
-    f"BEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20260101T000000Z\r\nDTSTART;VALUE=DATE:{day}\r\nSUMMARY:Biotonne\r\nRRULE:FREQ=DAILY;INTERVAL=2;COUNT=9\r\nEND:VEVENT\r\n"
-    f"BEGIN:VEVENT\r\nUID:2\r\nDTSTAMP:20260101T000000Z\r\nDTSTART;VALUE=DATE:{day}\r\nSUMMARY:Altpapier\r\nEND:VEVENT\r\n"
-    "END:VCALENDAR\r\n"
-)
-send = lambda body, **form: c.post("/settings/waste", data={**form, "waste_file": (io.BytesIO(body), "w.ics")}, headers=H, content_type="multipart/form-data")
-assert c.get("/api/waste").get_json() == {"enabled": False}
-send(b"not a calendar", waste_enabled="1")
-assert not A.WASTE_FILE.exists() and A.settings["waste_enabled"] is False
-assert send(b"x" * (A.WASTE_MAX_BYTES + 1)).status_code == 302 and not A.WASTE_FILE.exists()
-send(waste_ics.encode())
-assert A.settings["waste_enabled"] is True and b"Biotonne" not in A.WASTE_FILE.read_bytes()   # encrypted
-w = c.get("/api/waste").get_json()
-assert len(w["days"]) == 7 and w["days"][1]["bins"] == [] and [b["title"] for b in w["days"][2]["bins"]] == ["Biotonne"]
-assert {b["title"]: b["color"] for b in w["days"][0]["bins"]} == {"Altpapier": "#2f6fde", "Biotonne": "#8b5a2b"}
-page = c.get("/settings").data.decode()
-assert "Altpapier" in page and 'name="waste_color_1"' in page
-stamp = c.get("/api/config").get_json()["wasteStamp"]
-r = c.post("/settings/waste", data={"waste_enabled": "1", "waste_color_0": "#112233", "waste_color_1": "bad"}, headers=H)
-assert r.headers["Location"].endswith("/settings?updated=1") and c.get("/api/config").get_json()["wasteStamp"] != stamp
-r = c.post("/settings/waste", data={"waste_color_0": "#112233"}, headers={**H, "X-Autosave": "1"})     # switch turned off
-assert r.get_json()["message"] and A.settings["waste_enabled"] is False and c.get("/api/waste").get_json() == {"enabled": False}
-assert c.get("/api/config").get_json()["waste"] is False
-c.post("/settings/waste", data={"waste_enabled": "1", "waste_color_0": "#112233"}, headers={**H, "X-Autosave": "1"})
-assert c.get("/api/waste").get_json()["enabled"] is True
-assert A.settings["waste_colors"] == {"Altpapier": "#112233"} and c.get("/api/config").get_json()["waste"] is True
-c.post("/settings/waste", data={"remove": "1"}, headers=H)
-assert not A.WASTE_FILE.exists() and A.settings["waste_enabled"] is False and A.settings["waste_colors"] == {}
-ok("waste collection: upload validated, stored encrypted, colors, 7 days, remove")
-
 # ---- Homepage appearance: background, weather and greeting, without any network access
 with mock.patch.object(A, "fetch_json", return_value=[{"id": "7", "author": "Ann", "width": 300, "height": 200, "url": "https://u/7"}]) as f:
     assert c.get("/api/background").get_json()["author"] == "Ann"
@@ -239,6 +205,12 @@ with mock.patch.object(A, "fetch_json", return_value={"current": {"temperature_2
     w = c.get("/api/weather", headers={"Accept-Language": "de"}).get_json()
 assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "weather-day-rain", "city": "Rendsburg", "hours": [], "days": []}
 cfg = c.get("/api/config").get_json()
+assert c.get("/", headers={"Accept-Language": "en"}).headers["Cache-Control"] == "no-store"
+A.settings["language"] = "auto"
+c.set_cookie("lang", "de")
+assert c.get("/api/config", headers={"Accept-Language": "en"}).get_json()["language"] == "de"
+c.delete_cookie("lang")
+assert c.get("/api/config", headers={"Accept-Language": "en"}).get_json()["language"] == "en"
 assert cfg["version"] == A.VERSION
 assert cfg["name"] == "Sam" and cfg["greeting"] is True
 assert c.get("/api/config", environ_overrides={"SERVER_PORT": "8081"}).status_code == 404   # mode off
