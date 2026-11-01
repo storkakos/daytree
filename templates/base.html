@@ -1,53 +1,101 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 {% block head %}{% endblock %}
-<title>TimeTree → ICS</title>
+<title>{{ _("Settings") }}</title>
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d21; --muted:#6b7280; --ok:#16a34a; --err:#dc2626; --accent:#2563eb; --line:#e5e7eb; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1f26; --fg:#e8eaed; --muted:#9aa3ad; --line:#2a313a; } }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-  main { max-width:760px; margin:0 auto; padding:16px; }
-  nav { display:flex; gap:4px; align-items:center; margin:8px 0 16px; }
-  nav h1 { font-size:20px; margin:0 auto 0 0; }
-  nav a { color:var(--fg); text-decoration:none; padding:6px 12px; border-radius:8px; }
-  nav a.active { background:var(--accent); color:#fff; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
-  .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  :root { --bg:#f2f2f7; --card:#fff; --fg:#000; --muted:#6c6c70; --line:#c6c6c8; --accent:#007aff; --ok:#34c759; --err:#ff3b30; --bar:#f9f9f9cc; --control:#7676801f; --thumb:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --fg:#fff; --muted:#98989f; --line:#38383a; --accent:#0a84ff; --ok:#30d158; --err:#ff453a; --bar:#1d1d1fcc; --control:#7676803d; --thumb:#636366; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .bar { position:sticky; top:0; z-index:5; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:52px; padding:0 16px; background:var(--bar);
+         -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px); border-bottom:.5px solid var(--line); }
+  .bar a { color:var(--accent); text-decoration:none; min-height:44px; display:inline-flex; align-items:center; }
+  .bar strong { font-weight:600; }
+  main { max-width:680px; margin:0 auto; padding:8px 16px 48px; }
+  h1 { font-size:34px; font-weight:700; letter-spacing:.01em; margin:16px 0 8px; }
+  .group { margin-top:28px; }
+  .group > h2 { margin:0 16px 6px; font-size:13px; font-weight:400; color:var(--muted); text-transform:uppercase; letter-spacing:.02em; }
+  .group > p { margin:6px 16px 0; font-size:13px; color:var(--muted); }
+  .card { background:var(--card); border-radius:12px; overflow:hidden; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:46px; padding:10px 16px; position:relative; }
+  .row + .row::before { content:""; position:absolute; top:0; left:16px; right:0; border-top:.5px solid var(--line); }
+  .row > label, .row > .label { flex:none; max-width:45%; }
+  .row.stack { flex-direction:column; align-items:stretch; gap:6px; }
+  .row.stack > label { max-width:none; font-size:13px; color:var(--muted); }
+  .value { color:var(--muted); text-align:right; min-width:0; overflow-wrap:anywhere; }
+  input, select { font:inherit; color:var(--fg); }
+  .row input:not([type=checkbox]):not([type=radio]), .row select { flex:1; min-width:0; width:100%; border:0; background:transparent; padding:0; text-align:right; outline:none; }
+  .row select { color:var(--muted); text-align-last:right; cursor:pointer; }
+  .row select option { color:initial; }
+  .row.stack input:not([type=checkbox]):not([type=radio]) { text-align:left; }
+  .row input::placeholder { color:var(--muted); opacity:.7; }
+  input.mono { font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); text-overflow:ellipsis; }
+  .action { width:100%; min-height:46px; padding:10px 16px; border:0; background:none; color:var(--accent); font:inherit; text-align:center; cursor:pointer; position:relative; display:block; }
+  .row + .action::before, .action + .action::before { content:""; position:absolute; top:0; left:16px; right:0; border-top:.5px solid var(--line); }
+  .action:disabled { opacity:.4; cursor:default; }
+  .action.destructive { color:var(--err); }
+  .copy { flex:none; border:0; background:none; color:var(--accent); font:inherit; cursor:pointer; min-height:32px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
   .ok { background:var(--ok); } .err { background:var(--err); } .na { background:var(--muted); }
-  .muted { color:var(--muted); font-size:13px; }
-  .msg { padding:10px 14px; border-radius:8px; margin-bottom:12px; color:#fff; }
+  .switch { position:relative; flex:none; width:51px; height:31px; }
+  .switch input { position:absolute; inset:0; margin:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .switch span { position:absolute; inset:0; border-radius:31px; background:var(--control); transition:background .2s; pointer-events:none; }
+  .switch span::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 6px #0003; transition:transform .2s; }
+  .switch input:checked + span { background:var(--ok); }
+  .switch input:checked + span::after { transform:translateX(20px); }
+  .switch input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+  .segmented { display:flex; flex:1; max-width:260px; padding:2px; border-radius:9px; background:var(--control); }
+  .segmented label { flex:1; position:relative; text-align:center; font-size:13px; font-weight:500; cursor:pointer; }
+  .segmented input { position:absolute; inset:0; margin:0; opacity:0; cursor:pointer; }
+  .segmented span { display:block; padding:6px 8px; border-radius:7px; white-space:nowrap; }
+  .segmented input:checked + span { background:var(--thumb); box-shadow:0 1px 4px #0002; }
+  .segmented input:focus-visible + span { outline:2px solid var(--accent); }
+  .option { display:flex; gap:12px; align-items:center; cursor:pointer; }
+  .option input { position:absolute; opacity:0; }
+  .option strong { font-weight:400; display:block; }
+  .option small { display:block; color:var(--muted); font-size:13px; }
+  .option .tick { margin-left:auto; color:var(--accent); font-weight:600; visibility:hidden; }
+  .option input:checked ~ .tick { visibility:visible; }
+  .option input:focus-visible ~ div { outline:2px solid var(--accent); }
+  .msg { margin:16px 0 0; padding:12px 16px; border-radius:12px; color:#fff; font-size:15px; }
   .msg.ok { background:var(--ok); } .msg.err { background:var(--err); }
-  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; }
-  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
-  button[disabled] { opacity:.5; }
-  label { display:block; margin:10px 0 4px; font-size:13px; color:var(--muted); }
-  input, select { width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; }
-  input.mono { font:13px monospace; }
-  input[type=checkbox] { width:auto; margin-right:6px; }
-  .check { display:flex; align-items:center; margin:10px 0; color:var(--fg); font-size:14px; }
-  ul { list-style:none; margin:0; padding:0; }
-  li { padding:8px 0; border-top:1px solid var(--line); display:flex; gap:12px; }
-  li:first-child { border-top:0; }
-  .when { min-width:110px; color:var(--muted); }
-  h2 { font-size:16px; margin:0 0 4px; }
-  .warn { border-left:4px solid var(--err); padding:8px 12px; margin:10px 0; font-size:13px; background:var(--bg); border-radius:0 8px 8px 0; }
-  .opt { display:flex; gap:8px; align-items:flex-start; margin:8px 0; font-size:14px; }
-  .opt input { width:auto; margin-top:4px; }
-  code { font:12px monospace; background:var(--bg); padding:1px 5px; border-radius:4px; }
+  .warn { color:var(--err); }
+  .about { display:flex; flex-direction:column; align-items:center; gap:10px; margin:44px 0 12px; text-align:center; color:var(--muted); font-size:14px; }
+  .about p { margin:0; }
+  .about a { color:var(--accent); text-decoration:none; }
+  .about .links { display:flex; gap:22px; margin:4px 0 6px; }
+  .about .links a { display:grid; place-items:center; width:32px; height:32px; }
+  .about .links svg { width:22px; height:22px; }
+  .about .heart { color:#ff5a7a; }
+  .about .support { display:inline-flex; align-items:center; gap:8px; margin-top:8px; padding:10px 18px; border-radius:12px; background:var(--control); font-weight:500; }
+  .about .support .heart { font-size:18px; line-height:1; }
+  .about .version { font-size:12px; margin-top:6px; }
+  .slider { flex:1; min-width:0; max-width:220px; height:28px; padding:0; accent-color:var(--accent); cursor:pointer; }
+  .row input.slider { flex:1; }
+  .swatch { flex:none !important; width:44px !important; height:30px; padding:0 !important; border-radius:8px !important; cursor:pointer; }
+  #saved { position:fixed; left:50%; bottom:20px; transform:translate(-50%,12px); padding:8px 16px; border-radius:20px; background:#000c; color:#fff; font-size:14px; opacity:0; transition:opacity .2s, transform .2s; pointer-events:none; z-index:6; }
+  #saved.show { opacity:1; transform:translate(-50%,0); }
+  .embedded body { font-size:15px; }
+  .embedded main { padding:0 12px 40px; }
+  .embedded .group { margin-top:20px; }
+  .embedded .row > label, .embedded .row > .label { max-width:55%; }
+  .embedded .segmented { max-width:190px; }
+  .embedded .segmented span { padding:6px 4px; }
 </style>
 </head>
 <body>
+<div id="saved" role="status"></div>
+<nav class="bar">
+  <a href="{{ url_for('dashboard') }}">‹ {{ _("Home") }}</a>
+  <strong>{{ _("Settings") }}</strong>
+</nav>
 <main>
-  <nav>
-    <h1>TimeTree → ICS</h1>
-    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>
-    {% if not public %}<a href="{{ url_for('settings_page') }}" class="{{ 'active' if active == 'settings' }}">Settings</a>{% endif %}
-  </nav>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, m in messages %}<div class="msg {{ cat }}">{{ m }}</div>{% endfor %}
   {% endwith %}

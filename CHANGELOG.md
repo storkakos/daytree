@@ -7,6 +7,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-01
+
+The project is now called Daytree and has grown from a calendar export into a home calendar app.
+
+### Added
+
+- Kiosk homepage for TV, monitor and tablet, in landscape and portrait, with clock, today's agenda, the next
+  7 days, tasks and reminders 30 minutes before an event.
+- First-time setup popup that requires the TimeTree sign-in and calendar selection.
+- Encrypted task storage, with a setting to show or hide tasks on the homepage.
+- German user interface, with automatic language detection and a language setting.
+- Settings for the time zone, 12 or 24 hour clock and date style.
+- Daytree logo, favicon and home screen icon.
+- Photo or color backgrounds with blur and brightness settings. Photos come from Lorem Picsum.
+- Colored bullets on the homepage that match the TimeTree event colors.
+- Greeting with your name, and current weather from Open-Meteo.
+- Analog clock, seconds, clock size, font family, font size and font weight settings.
+- Settings panel on the homepage that saves changes immediately and shows them live.
+- About section in the settings, with project links and the version.
+
+### Changed
+
+- The project is now called Daytree. The Compose project, container and volumes were renamed; see the README to
+  keep your data when you upgrade.
+- The sync status and **Sync now** moved to the settings page, opened with the gear icon on the homepage.
+- The read-only public dashboard is now the kiosk view without tasks and settings.
+- The CSRF check now covers all state-changing requests.
+- New design for the homepage and settings, inspired by Bonjourr.
+- The license changed from MIT to GPL-3.0.
+
 ## [0.9.0] - 2026-11-01
 
 First public beta. Tested end to end with a real TimeTree account, a Cloudflare tunnel, Outlook and Google Calendar.
@@ -32,5 +62,6 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/timetree-ics/compare/v0.9.0...dev
-[0.9.0]: https://github.com/storkakos/timetree-ics/releases/tag/v0.9.0
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.10.0...dev
+[0.10.0]: https://github.com/storkakos/daytree/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/storkakos/daytree/releases/tag/v0.9.0

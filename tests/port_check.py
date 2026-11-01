@@ -2,7 +2,7 @@
 
 Needs a running container with public mode "off" (the default):
 
-    docker exec -i timetree-ics python - < tests/port_check.py
+    docker exec -i daytree python - < tests/port_check.py
 
 Prints "ALL OK" on success; any failed assertion exits non-zero.
 """
