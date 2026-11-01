@@ -34,6 +34,8 @@ The homepage gets a weather forecast and becomes a self-updating screen.
 
 ### Fixed
 
+- In automatic language mode the homepage opens in the browser's language straight away, and pages are no longer stored by the browser.
+- On phones the homepage now scrolls, follows the system font size and no longer hides tasks and events.
 - The background photo no longer changes when the app restarts, and a new change interval applies to the current photo.
 - The homepage stayed empty on older browsers (Chromium 56 and similar).
   Homepage and settings no longer depend on newer JavaScript and CSS features.
