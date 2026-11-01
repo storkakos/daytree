@@ -8,7 +8,7 @@ A self-hosted Docker service that exports a TimeTree calendar on a schedule and 
 as a private ICS feed, managed from a web dashboard.
 
 [![Release](https://img.shields.io/github/v/release/storkakos/timetree-ics?include_prereleases&label=Release)](https://github.com/storkakos/timetree-ics/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 [![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare-Tunnel-F38020?logo=cloudflare&logoColor=white)](#sharing-through-a-cloudflare-tunnel)
@@ -31,7 +31,11 @@ as a private ICS feed, managed from a web dashboard.
 | **Scheduled export** | Syncs one TimeTree calendar every 0.5 to 24 hours (default: 3 hours). |
 | **Private ICS feed** | Serves the calendar under a secret token URL. The token can be replaced at any time. |
 | **Kiosk homepage** | Shows the clock, today's agenda, the next 7 days and tasks. Works on TVs, monitors and tablets, in landscape and portrait. |
+| **Photo backgrounds** | Shows changing photos, with blur and brightness controls, or a solid color. |
+| **Greeting and weather** | Greets you by name and shows the current weather for your town, without an API key. |
+| **Event colors** | Shows each event on the homepage with its TimeTree color. |
 | **Reminders** | Shows a reminder 30 minutes before an event starts. |
+| **German and English** | Follows the browser language, or a fixed language from the settings. |
 | **Settings in one place** | Sign-in, calendar selection, sync status, feed token and tunnel are one click away behind the gear icon. |
 | **Cloudflare tunnel** | Optional built-in tunnel that exposes nothing, the ICS feed only, or a read-only dashboard. |
 | **Encrypted settings** | Credentials and tokens are stored encrypted, with the key on a separate volume. |
@@ -136,14 +140,20 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the dashboard. |
-| `TZ` | `Europe/Berlin` | Time zone name for dashboard times. An invalid name falls back to UTC. Event times in the feed are not affected. |
+| `TZ` | `Europe/Berlin` | Default time zone for the homepage and settings. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. Event times in the feed are not affected. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
 | `DATA_DIR` | `/data` | Data directory. |
 | `PUBLIC_PORT` | `8081` | Port treated as public, where the tunnel points. |
 | `CLOUDFLARED_TAG` (build argument) | `2026.10.7` | Version of the `cloudflared` image to copy the binary from. |
 
-The host port cannot be changed in the dashboard. Port mappings belong to Docker on the host, and giving the app
+Language, time and date, greeting, weather, background, font and the tasks panel are set behind the gear icon on the
+homepage. These settings are saved immediately and shown live.
+
+Photos come from [Lorem Picsum](https://picsum.photos/) and weather data from [Open-Meteo](https://open-meteo.com/).
+Neither needs an API key. Fonts other than the system font are loaded from Google Fonts.
+
+The host port cannot be changed in the settings. Port mappings belong to Docker on the host, and giving the app
 access to the Docker socket would be a security risk. The app keeps using ports 8080 and 8081 inside the container,
 so a tunnel is not affected by a changed host port.
 
@@ -162,7 +172,7 @@ so a tunnel is not affected by a changed host port.
 
 | Volume | Mount | Content |
 |---|---|---|
-| `timetree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `state.json` |
+| `timetree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
 | `timetree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
@@ -210,17 +220,20 @@ Versions follow [Semantic Versioning](https://semver.org/). To release, record t
   [`timetree-exporter`](https://github.com/eoleedi/TimeTree-Exporter), which can break or rate-limit without notice.
 - Only one calendar is exported at a time.
 - Only accounts with an e-mail address and password are supported.
-- A subscribed calendar shows all events in one color. TimeTree label colors are not exported.
+- A subscribed calendar shows all events in one color. The ICS feed does not contain TimeTree colors, only the homepage does.
 
 ## Credits
 
 - [eoleedi/TimeTree-Exporter](https://github.com/eoleedi/TimeTree-Exporter) (MIT): the exporter used under the hood.
 - [cloudflare/cloudflared](https://github.com/cloudflare/cloudflared): the tunnel client.
+- [Bonjourr](https://github.com/victrme/Bonjourr) (GPL-3.0): the design inspiration for the homepage and its settings, and the settings icon.
+- [Open-Meteo](https://open-meteo.com/) (CC BY 4.0): weather data.
+- [Lorem Picsum](https://picsum.photos/): background photos.
 - Inspired by [gottfried1980/timetable-docker](https://github.com/gottfried1980/timetable-docker) and
   [Poeschl/docker-timetree-exporter](https://github.com/Poeschl/docker-timetree-exporter). No code from them is used.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [GNU General Public License v3.0](LICENSE). Version 0.9.0 was released under the MIT License.
 
 TimeTree is a trademark of its owner. This project is not affiliated with or endorsed by TimeTree, Inc.

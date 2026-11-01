@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -134,6 +134,67 @@ assert c.delete(f"/api/tasks/{t['id']}", headers=H).status_code == 204
 assert c.delete(f"/api/tasks/{t['id']}", headers=H).status_code == 404
 ok("tasks: encrypted at rest, add, complete, delete, CSRF protected")
 
+# ---- Language, time zone and date/time settings
+page = c.get("/", headers={"Accept-Language": "de-DE,de;q=0.9"}).data.decode()
+assert 'lang="de"' in page and "Heute" in page and "Aufgaben" in page
+assert b"Today" in c.get("/", headers={"Accept-Language": "fr"}).data     # English is the fallback
+D = {"language": "de", "timezone": "Asia/Tokyo", "time_format": "12", "date_style": "numeric"}
+assert c.post("/settings/display", data=D, headers=H).status_code == 302
+assert "Einstellungen" in c.get("/settings").data.decode()                # the setting overrides the browser
+assert "0,5 h" in c.get("/settings").data.decode()
+assert os.environ["TZ"] == "Asia/Tokyo" and time.tzname[0] == "JST"
+page = c.get("/").data.decode()
+assert '"hour12": true' in page and '"timeZone": "Asia/Tokyo"' in page and '"dateStyle": "numeric"' in page
+assert c.post("/settings/display", data={**D, "timezone": "Mars/Base"}, headers=H).status_code == 400
+assert c.post("/settings/display", data={**D, "language": "xx"}, headers=H).status_code == 400
+assert c.post("/settings/display", data=D, headers=H, **{"environ_overrides": {"SERVER_PORT": "8081"}}).status_code == 404
+assert b'id="tasks"' not in c.get("/").data and b"/api/tasks" not in c.get("/").data     # switched off by D
+c.post("/settings/display", data={"language": "auto", "timezone": "", "time_format": "24", "date_style": "long", "tasks_enabled": "1"}, headers=H)
+assert A.settings["timezone"] == "" and A.settings["language"] == "auto"
+assert b'id="tasks"' in c.get("/").data
+
+import re  # noqa: E402
+
+import i18n  # noqa: E402
+
+used = set()
+for f in [ROOT / "app.py", *(ROOT / "templates").glob("*.html")]:
+    used |= set(re.findall(r'_\("((?:[^"\\]|\\.)+)"\)', f.read_text(encoding="utf-8")))
+missing = (used | set(A.display_config_strings()) | set(A.WEATHER_TEXT)) - set(i18n.GERMAN)
+assert not missing, missing
+ok("language, time zone and date formats; every UI string has a German translation")
+
+# ---- Homepage appearance: background, weather and greeting, without any network access
+with mock.patch.object(A, "fetch_json", return_value=[{"id": "7", "author": "Ann", "width": 300, "height": 200, "url": "https://u/7"}]) as f:
+    assert c.get("/api/background").get_json()["author"] == "Ann"
+    assert c.get("/api/background").get_json()["url"].endswith("/id/7/2560/1600")
+    assert f.call_count == 1                                              # cached until the next change
+    assert c.post("/api/background/refresh", headers=H).status_code == 204
+    c.get("/api/background")
+    assert f.call_count == 2
+A._backgrounds.clear()
+with mock.patch.object(A, "fetch_json", side_effect=OSError("offline")):
+    assert c.get("/api/background").get_json() == {"url": None}
+    r = c.post("/settings/display", data={"tasks_enabled": "1", "weather_city": "Nowhere"}, headers={**H, "X-Autosave": "1"})
+    assert A.settings["weather_lat"] is None and r.get_json()["message"] == "Place not found."
+place = {"results": [{"latitude": 54.3, "longitude": 9.6, "name": "Rendsburg"}]}
+with mock.patch.object(A, "fetch_json", return_value=place):
+    c.post("/settings/display", data={"tasks_enabled": "1", "weather_enabled": "1", "weather_city": "rendsburg", "greeting_enabled": "1", "greeting_name": "Sam"}, headers=H)
+assert A.settings["weather_city"] == "Rendsburg" and A.settings["weather_lat"] == 54.3
+with mock.patch.object(A, "fetch_json", return_value={"current": {"temperature_2m": 9.6, "weather_code": 61}}):
+    w = c.get("/api/weather", headers={"Accept-Language": "de"}).get_json()
+assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "🌧️", "city": "Rendsburg"}
+cfg = c.get("/api/config").get_json()
+assert cfg["name"] == "Sam" and cfg["greeting"] is True
+assert c.get("/api/config", environ_overrides={"SERVER_PORT": "8081"}).status_code == 404   # mode off
+for bad in ({"background_color": "red"}, {"font_family": "x"}, {"background_every": "x"}, {"clock_size": "abc"}):
+    assert c.post("/settings/display", data={"tasks_enabled": "1", **bad}, headers=H).status_code == 400
+c.post("/settings/display", data={"tasks_enabled": "1", "clock_size": "9999"}, headers=H)
+assert A.settings["clock_size"] == 200
+c.post("/settings/display", data={"tasks_enabled": "1", "clock_size": "100", "weather_city": ""}, headers=H)
+assert A.settings["weather_city"] == ""
+ok("background, weather and greeting: cached, offline-safe, validated")
+
 # ---- 5) CSRF
 assert c.post("/sync", headers={"Origin": "http://evil.example"}).status_code == 403
 assert c.post("/sync").status_code == 403
@@ -185,6 +246,10 @@ assert c.get(f"/calendar.ics?token={tok}", **PUB).status_code == 200
 assert c.get("/ping", **PUB).status_code == 200
 assert tok.encode() in c.get("/settings").data                           # internal view shows the URL
 assert c.get("/api/events", **PUB).status_code == 200
+A.settings["greeting_name"] = "Private Name"
+assert c.get("/api/config", **PUB).get_json()["name"] == "" and b"Private Name" not in c.get("/", **PUB).data
+A.settings["greeting_name"] = ""
+assert c.post("/api/background/refresh", headers=H, **PUB).status_code == 404
 assert c.get("/api/tasks", **PUB).status_code == 404
 assert c.post("/api/tasks", json={"title": "x"}, headers=H, **PUB).status_code == 404
 ok("mode dashboard: read-only; no token/settings/sync on the public side")
@@ -226,8 +291,15 @@ assert {"AllDay", "Tokyo", "Utc"} <= set(titles) and "Past" not in titles and "F
 assert [e["sort"] for e in ev] == sorted(e["sort"] for e in ev)
 allday = next(e for e in ev if e["title"] == "AllDay")
 assert allday["all_day"] and allday["date"] == allday["end_date"]         # exclusive DTEND is not a second day
+assert A.event_colors(b"BEGIN:VEVENT\r\nUID:long-\r\n id\r\nCOLOR:#47b2f7\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:2\r\nCOLOR:red\r\nEND:VEVENT\r\n") == {"long-id": "#47b2f7"}
+A.COLORS_FILE.write_text(json.dumps({"1": "#e73b3b"}))
+ev = A.occurrences(today, today + timedelta(days=61))
+assert next(e for e in ev if e["title"] == "AllDay")["color"] == "#e73b3b"
+assert next(e for e in ev if e["title"] == "Utc")["color"] is None
 api = c.get("/api/events").get_json()["events"]
-assert {"title", "date", "end_date", "time", "all_day"} <= set(api[0]) and "AllDay" in [e["title"] for e in api]
+assert {"title", "date", "end_date", "time", "all_day", "start_ts"} <= set(api[0]) and "AllDay" in [e["title"] for e in api]
+timed = next(e for e in api if e["title"] == "Utc")
+assert timed["start_ts"] == int(datetime.strptime(d(4) + "120000+0000", "%Y%m%d%H%M%S%z").timestamp())
 assert c.get("/").status_code == 200
 ok("preview: all-day, timezones, recurrences and EXDATE handled")
 

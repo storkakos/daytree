@@ -12,13 +12,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Kiosk homepage for TV, monitor and tablet, in landscape and portrait, with clock, today's agenda, the next
   7 days, tasks and reminders 30 minutes before an event.
 - First-time setup popup that requires the TimeTree sign-in and calendar selection.
-- Encrypted task storage.
+- Encrypted task storage, with a setting to show or hide tasks on the homepage.
+- German user interface, with automatic language detection and a language setting.
+- Settings for the time zone, 12 or 24 hour clock and date style.
+- Favicon and home screen icon.
+- Photo or color backgrounds with blur and brightness settings. Photos come from Lorem Picsum.
+- Colored bullets on the homepage that match the TimeTree event colors.
+- Greeting with your name, and current weather from Open-Meteo.
+- Analog clock, seconds, clock size, font family, font size and font weight settings.
+- Settings panel on the homepage that saves changes immediately and shows them live.
 
 ### Changed
 
 - The sync status and **Sync now** moved to the settings page, opened with the gear icon on the homepage.
 - The read-only public dashboard is now the kiosk view without tasks and settings.
 - The CSRF check now covers all state-changing requests.
+- New design for the homepage and settings, inspired by Bonjourr.
+- The license changed from MIT to GPL-3.0.
 
 ## [0.9.0] - 2026-11-01
 

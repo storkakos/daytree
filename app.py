@@ -6,24 +6,31 @@ supervisor live in memory and in background threads).
 import hmac
 import json
 import os
+import random
 import re
 import secrets
 import subprocess
 import threading
 import time
+import urllib.parse
+import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, available_timezones
 
 import recurring_ical_events
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from icalendar import Calendar
 
+from i18n import translate
+
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
 STATE_FILE = DATA / "state.json"
+COLORS_FILE = DATA / "event_colors.json"   # event UID -> TimeTree color, for the homepage only
 SETTINGS_FILE = DATA / "settings.enc"      # fully encrypted (Fernet)
 TASKS_FILE = DATA / "tasks.enc"            # fully encrypted (Fernet)
 LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, then deleted
@@ -32,6 +39,9 @@ MIN_MINUTES, MAX_MINUTES, STEP_MINUTES = 30, 1440, 30
 PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8081"))   # port the Cloudflare tunnel points to
 PUBLIC_MODES = ("off", "ics", "dashboard")
 SECRET_KEYS = ("password", "tunnel_token")                 # never passed to templates
+LANGUAGES = ("en", "de")
+TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", "Australia/", "Europe/", "Indian/", "Pacific/", "UTC")
+DEFAULT_TZ = os.environ.get("TZ", "")                      # from docker-compose / .env
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -70,7 +80,8 @@ def _clamp(v):
 
 
 def _hours(minutes):
-    return f"{minutes / 60:g} h"
+    label = f"{minutes / 60:g} h"
+    return label.replace(".", ",") if language() == "de" else label
 
 
 DEFAULTS = {
@@ -85,6 +96,43 @@ DEFAULTS = {
     "public_hostname": "",
     "tunnel_enabled": False,
     "tunnel_token": "",
+    "language": "auto",         # auto | en | de
+    "timezone": "",             # empty = DEFAULT_TZ
+    "time_format": "24",        # 24 | 12
+    "date_style": "long",       # long | numeric
+    "tasks_enabled": True,      # shows the tasks panel on the homepage
+    "show_seconds": False,
+    "clock_style": "digital",   # digital | analog
+    "clock_size": 100,          # percent
+    "greeting_enabled": True,
+    "greeting_name": "",
+    "weather_enabled": False,
+    "weather_city": "",
+    "weather_lat": None,
+    "weather_lon": None,
+    "weather_unit": "celsius",  # celsius | fahrenheit
+    "background_type": "photo",  # photo | color
+    "background_color": "#1c2733",
+    "background_every": "hour",  # hour | day | fixed
+    "background_blur": 0,       # pixels
+    "background_brightness": 60,  # percent
+    "font_family": "system",
+    "font_size": 100,           # percent
+    "font_weight": 300,
+}
+
+SYSTEM_FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif'
+FONTS = {"system": None, "inter": "Inter", "nunito": "Nunito", "poppins": "Poppins", "lora": "Lora", "playfair": "Playfair Display"}
+BACKGROUND_SECONDS = {"hour": 3600, "day": 86400, "fixed": float("inf")}
+WEATHER_TEXT = {
+    "Clear sky": ("☀️", (0,)),
+    "Partly cloudy": ("⛅", (1, 2)),
+    "Overcast": ("☁️", (3,)),
+    "Fog": ("🌫️", (45, 48)),
+    "Drizzle": ("🌦️", (51, 53, 55, 56, 57)),
+    "Rain": ("🌧️", (61, 63, 65, 66, 67, 80, 81, 82)),
+    "Snow": ("❄️", (71, 73, 75, 77, 85, 86)),
+    "Thunderstorm": ("⛈️", (95, 96, 99)),
 }
 
 
@@ -132,6 +180,35 @@ def load_settings():
 
 
 settings = load_settings()
+
+
+def effective_timezone():
+    name = settings["timezone"] or DEFAULT_TZ or "UTC"
+    try:
+        ZoneInfo(name)
+        return name
+    except (KeyError, ValueError, OSError):
+        return "UTC"
+
+
+def apply_timezone():
+    """Local time of this process and its child processes follows the configured time zone."""
+    os.environ["TZ"] = effective_timezone()
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+
+apply_timezone()
+
+
+def language():
+    if settings["language"] in LANGUAGES:
+        return settings["language"]
+    return request.accept_languages.best_match(LANGUAGES) or LANGUAGES[0]
+
+
+def _(text):
+    return translate(text, language())
 
 
 def needs_setup():
@@ -220,6 +297,17 @@ def fix_ics(raw):
         return raw
 
 
+def event_colors(raw):
+    """TimeTree colors by event UID. The published feed has no COLOR, so the homepage keeps them separately."""
+    colors = {}
+    for block in raw.replace(b"\r\n ", b"").decode("utf-8", "replace").split("BEGIN:VEVENT")[1:]:
+        uid = re.search(r"^UID:(.+?)\r?$", block, re.M)
+        color = re.search(r"^COLOR:(#[0-9a-fA-F]{6})\r?$", block, re.M)
+        if uid and color:
+            colors[uid.group(1)] = color.group(1)
+    return colors
+
+
 def run_sync():
     """Run timetree-exporter; replace the ICS file only on success."""
     if not _lock.acquire(blocking=False):
@@ -242,7 +330,9 @@ def run_sync():
                 env=env, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
             )
             if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 0:
-                tmp.write_bytes(fix_ics(tmp.read_bytes()))
+                raw = tmp.read_bytes()
+                COLORS_FILE.write_text(json.dumps(event_colors(raw)))
+                tmp.write_bytes(fix_ics(raw))
                 tmp.replace(ICS_FILE)
                 _state.update(ok=True, last_success=_now(), message="OK", events=count_events())
             else:
@@ -354,7 +444,7 @@ def is_public():
 
 @app.context_processor
 def _inject():
-    return {"public": is_public()}
+    return {"public": is_public(), "_": _, "lang": language()}
 
 
 @app.before_request
@@ -416,10 +506,15 @@ def occurrences(first, last):
         events = recurring_ical_events.of(cal).between(first, last)
     except Exception:
         return []
+    try:
+        colors = json.loads(COLORS_FILE.read_text())
+    except (OSError, ValueError):
+        colors = {}
     out = []
     for ev in events:
-        start = _local(ev.decoded("DTSTART"))
-        end = _local(ev.decoded("DTEND")) if "DTEND" in ev else start
+        start_raw = ev.decoded("DTSTART")
+        end_raw = ev.decoded("DTEND") if "DTEND" in ev else start_raw
+        start, end = _local(start_raw), _local(end_raw)
         timed = isinstance(start, datetime)
         out.append({
             "title": str(ev.get("SUMMARY", "(untitled)")),
@@ -428,6 +523,9 @@ def occurrences(first, last):
             "time": start.strftime("%H:%M") if timed else "",
             "end_time": end.strftime("%H:%M") if timed else "",
             "all_day": not timed,
+            "color": colors.get(str(ev.get("UID"))),
+            "start_ts": int(start_raw.timestamp()) if timed else None,
+            "end_ts": int(end_raw.timestamp()) if timed else None,
             "sort": start if timed else datetime.combine(start, datetime.min.time()),
         })
     out.sort(key=lambda e: e["sort"])
@@ -435,10 +533,47 @@ def occurrences(first, last):
 
 
 # ---------------------------------------------------------------- routes
+def display_config_strings():
+    return ("All day", "Nothing planned today", "No tasks", "Delete task", "Starts at {time} · tap to dismiss",
+            "Good morning", "Good afternoon", "Good evening", "Good night", "Photo by {name}")
+
+
+def display_config():
+    """Everything the homepage needs to draw itself. Free of secrets: it also reaches the public read-only view."""
+    font = FONTS[settings["font_family"]]
+    font_url = None
+    if font:
+        font_url = f"https://fonts.googleapis.com/css2?family={urllib.parse.quote_plus(font)}:wght@300;400;500;600;700&display=swap"
+    return {
+        "language": language(),
+        "locale": "de-DE" if language() == "de" else "en-GB",
+        "hour12": settings["time_format"] == "12",
+        "timeZone": effective_timezone(),
+        "dateStyle": settings["date_style"],
+        "showSeconds": settings["show_seconds"],
+        "clockStyle": settings["clock_style"],
+        "clockSize": settings["clock_size"],
+        "showTasks": settings["tasks_enabled"] and not is_public(),
+        "greeting": settings["greeting_enabled"],
+        "name": "" if is_public() else settings["greeting_name"],
+        "weather": settings["weather_enabled"],
+        "backgroundType": settings["background_type"],
+        "backgroundColor": settings["background_color"],
+        "blur": settings["background_blur"],
+        "brightness": settings["background_brightness"],
+        "fontFamily": f'"{font}",{SYSTEM_FONT}' if font else SYSTEM_FONT,
+        "fontUrl": font_url,
+        "fontSize": settings["font_size"],
+        "fontWeight": settings["font_weight"],
+        "text": {t: _(t) for t in display_config_strings()},
+    }
+
+
 @app.route("/")
 def dashboard():
     return render_template(
         "kiosk.html", s=view(), setup=needs_setup() and not is_public(), default_minutes=DEFAULTS["interval_minutes"],
+        show_tasks=settings["tasks_enabled"] and not is_public(), config=display_config(),
     )
 
 
@@ -456,6 +591,8 @@ def settings_page():
         "settings.html", s=view(), state=_state, running=_lock.locked(),
         next_run=datetime.fromtimestamp(_next_due).strftime("%H:%M") if _next_due else None,
         intervals=[(m, _hours(m)) for m in range(MIN_MINUTES, MAX_MINUTES + 1, STEP_MINUTES)],
+        timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
+        default_timezone=DEFAULT_TZ or "UTC", fonts=FONTS,
         ics_local=local, ics_pub=pub, tunnel=_tunnel, public_port=PUBLIC_PORT,
     )
 
@@ -471,12 +608,12 @@ def settings_login():
     email = request.form.get("email", "").strip()
     password = request.form.get("password", "") or settings["password"]  # empty = keep stored password
     if not email or not password:
-        flash("Enter e-mail and password.", "err")
+        flash(_("Enter e-mail and password."), "err")
         return _back()
     try:
         cals = fetch_calendars(email, password)
     except Exception as e:  # noqa: BLE001
-        flash(f"Login failed: {str(e)[:200]}", "err")
+        flash(_("Login failed: {error}").format(error=str(e)[:200]), "err")
         return _back()
     settings.update(email=email, password=password, calendars=cals)
     if request.form.get("setup"):
@@ -485,7 +622,7 @@ def settings_login():
         # previous selection no longer valid -> preselect the first calendar
         settings.update(calendar_code=cals[0]["code"] if cals else "", calendar_name=cals[0]["name"] if cals else "")
     save_settings(settings)
-    flash(f"Signed in. {len(cals)} calendars found.", "ok")
+    flash(_("Signed in. {count} calendars found.").format(count=len(cals)), "ok")
     return _back()
 
 
@@ -502,13 +639,89 @@ def settings_save():
         settings.update(calendar_code=match["code"], calendar_name=match["name"])
     if request.form.get("new_token"):
         settings["token"] = secrets.token_urlsafe(24)
-        flash("New token generated - update the ICS URL in Outlook.", "ok")
+        flash(_("New token generated. Update the ICS URL in your calendar apps."), "ok")
     save_settings(settings)
     _reset_timer()
-    flash("Settings saved.", "ok")
+    flash(_("Settings saved."), "ok")
     if request.form.get("sync_now"):
         threading.Thread(target=run_sync, daemon=True).start()
     return _back()
+
+
+def _number(name, low, high):
+    try:
+        return max(low, min(high, int(request.form.get(name, settings[name]))))
+    except ValueError:
+        abort(400)
+
+
+def _choice(name, allowed):
+    value = request.form.get(name, settings[name])
+    if value not in allowed:
+        abort(400)
+    return value
+
+
+def geocode(city):
+    """First match of a place name as (lat, lon, label), or None."""
+    query = urllib.parse.urlencode({"name": city, "count": 1, "language": language()})
+    results = fetch_json(f"https://geocoding-api.open-meteo.com/v1/search?{query}").get("results")
+    if not results:
+        return None
+    return results[0]["latitude"], results[0]["longitude"], results[0]["name"]
+
+
+@app.post("/settings/display")
+def settings_display():
+    """Homepage appearance: language, time and date, greeting, weather, background and font."""
+    zone = request.form.get("timezone", settings["timezone"])
+    color = request.form.get("background_color", settings["background_color"])
+    if (zone and zone not in available_timezones()) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        abort(400)
+    new = {
+        "timezone": zone, "background_color": color,
+        "language": _choice("language", ("auto", *LANGUAGES)),
+        "time_format": _choice("time_format", ("24", "12")),
+        "date_style": _choice("date_style", ("long", "numeric")),
+        "clock_style": _choice("clock_style", ("digital", "analog")),
+        "weather_unit": _choice("weather_unit", ("celsius", "fahrenheit")),
+        "background_type": _choice("background_type", ("photo", "color")),
+        "background_every": _choice("background_every", tuple(BACKGROUND_SECONDS)),
+        "font_family": _choice("font_family", tuple(FONTS)),
+        "clock_size": _number("clock_size", 50, 200),
+        "background_blur": _number("background_blur", 0, 50),
+        "background_brightness": _number("background_brightness", 20, 100),
+        "font_size": _number("font_size", 70, 150),
+        "font_weight": _number("font_weight", 300, 700),
+        "tasks_enabled": bool(request.form.get("tasks_enabled")),
+        "show_seconds": bool(request.form.get("show_seconds")),
+        "greeting_enabled": bool(request.form.get("greeting_enabled")),
+        "weather_enabled": bool(request.form.get("weather_enabled")),
+        "greeting_name": request.form.get("greeting_name", settings["greeting_name"]).strip()[:40],
+    }
+    message = _("Settings saved.")
+    city = request.form.get("weather_city", settings["weather_city"]).strip()[:80]
+    if city != settings["weather_city"]:
+        new.update(weather_city=city, weather_lat=None, weather_lon=None)
+        _weather.clear()
+        if city:
+            try:
+                place = geocode(city)
+            except Exception:  # noqa: BLE001
+                place = None
+            if place:
+                new.update(weather_lat=place[0], weather_lon=place[1], weather_city=place[2])
+            else:
+                message = _("Place not found.")
+    if settings["weather_unit"] != new["weather_unit"]:
+        _weather.clear()
+    settings.update(new)
+    save_settings(settings)
+    apply_timezone()
+    if request.headers.get("X-Autosave"):
+        return jsonify(message=message, weather_city=settings["weather_city"])
+    flash(message, "ok")
+    return redirect(url_for("settings_page"))
 
 
 @app.post("/settings/tunnel")
@@ -518,7 +731,7 @@ def settings_tunnel():
     if raw:
         m = _TOKEN_RE.search(raw)   # also accepts a pasted "cloudflared ... --token XYZ" command
         if not m:
-            flash("Tunnel token not recognized (it normally starts with “eyJ”).", "err")
+            flash(_("Tunnel token not recognized (it normally starts with “eyJ”)."), "err")
             return redirect(url_for("settings_page"))
         settings["tunnel_token"] = m.group(0)
     if request.form.get("clear_token"):
@@ -526,7 +739,7 @@ def settings_tunnel():
 
     host = request.form.get("public_hostname", "").strip().lower()
     if host and not re.fullmatch(r"[a-z0-9]([a-z0-9.\-]*[a-z0-9])?", host):
-        flash("Invalid hostname.", "err")
+        flash(_("Invalid hostname."), "err")
         return redirect(url_for("settings_page"))
     settings["public_hostname"] = host
 
@@ -535,12 +748,12 @@ def settings_tunnel():
 
     want = bool(request.form.get("tunnel_enabled"))
     if want and not settings["tunnel_token"]:
-        flash("Enter the tunnel token first to enable the tunnel.", "err")
+        flash(_("Enter the tunnel token first to enable the tunnel."), "err")
         want = False
     settings["tunnel_enabled"] = want
     save_settings(settings)
     _tunnel_restart.set()
-    flash("Sharing settings saved.", "ok")
+    flash(_("Sharing settings saved."), "ok")
     return redirect(url_for("settings_page"))
 
 
@@ -551,6 +764,71 @@ def api_events():
     return jsonify(events=[
         {**e, "date": e["date"].isoformat(), "end_date": e["end_date"].isoformat(), "sort": None} for e in events
     ])
+
+
+def fetch_json(url, headers=None):
+    """External lookups stay short: the homepage keeps its last values if a service is unreachable."""
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers or {}), timeout=8) as response:
+        return json.loads(response.read())
+
+
+_backgrounds = {}      # orientation -> {"url", "author", "link", "location", "expires"}
+_weather = {}
+
+
+def _picsum_photo(orientation):
+    photos = fetch_json(f"https://picsum.photos/v2/list?page={random.randint(1, 30)}&limit=30")
+    wide = orientation == "landscape"
+    matching = [p for p in photos if (p["width"] >= p["height"]) == wide] or photos
+    photo = random.choice(matching)
+    size = "2560/1600" if wide else "1600/2560"
+    return {"url": f"https://picsum.photos/id/{photo['id']}/{size}", "author": photo["author"], "link": photo["url"], "location": ""}
+
+
+@app.get("/api/background")
+def api_background():
+    orientation = "portrait" if request.args.get("orientation") == "portrait" else "landscape"
+    entry = _backgrounds.get(orientation)
+    if not entry or time.time() >= entry["expires"]:
+        try:
+            entry = {**_picsum_photo(orientation), "expires": time.time() + BACKGROUND_SECONDS[settings["background_every"]]}
+            _backgrounds[orientation] = entry
+        except Exception:  # noqa: BLE001
+            pass
+    if not entry:
+        return jsonify(url=None)
+    return jsonify({k: entry[k] for k in ("url", "author", "link", "location")})
+
+
+@app.post("/api/background/refresh")
+def api_background_refresh():
+    _backgrounds.clear()
+    return "", 204
+
+
+@app.get("/api/weather")
+def api_weather():
+    lat, lon = settings["weather_lat"], settings["weather_lon"]
+    if not settings["weather_enabled"] or lat is None:
+        return jsonify(enabled=False)
+    if time.time() >= _weather.get("expires", 0):
+        query = urllib.parse.urlencode({
+            "latitude": lat, "longitude": lon, "current": "temperature_2m,weather_code",
+            "temperature_unit": settings["weather_unit"], "timezone": "auto",
+        })
+        try:
+            current = fetch_json(f"https://api.open-meteo.com/v1/forecast?{query}")["current"]
+            _weather.update(temperature=round(current["temperature_2m"]), code=current["weather_code"], expires=time.time() + 1800)
+        except Exception:  # noqa: BLE001
+            if "code" not in _weather:
+                return jsonify(enabled=False)
+    text, icon = next(((t, v[0]) for t, v in WEATHER_TEXT.items() if _weather["code"] in v[1]), ("Overcast", "☁️"))
+    return jsonify(enabled=True, temperature=_weather["temperature"], text=_(text), icon=icon, city=settings["weather_city"])
+
+
+@app.get("/api/config")
+def api_config():
+    return jsonify(display_config())
 
 
 def load_tasks():
