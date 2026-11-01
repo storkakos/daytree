@@ -45,7 +45,7 @@
 <main>
   <nav>
     <h1>TimeTree → ICS</h1>
-    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('dashboard') }}" >Home</a>
     {% if not public %}<a href="{{ url_for('settings_page') }}" class="{{ 'active' if active == 'settings' }}">Settings</a>{% endif %}
   </nav>
   {% with messages = get_flashed_messages(with_categories=true) %}

@@ -30,8 +30,9 @@ as a private ICS feed, managed from a web dashboard.
 |---|---|
 | **Scheduled export** | Syncs one TimeTree calendar every 0.5 to 24 hours (default: 3 hours). |
 | **Private ICS feed** | Serves the calendar under a secret token URL. The token can be replaced at any time. |
-| **Web dashboard** | Shows sync status and upcoming events. A **Sync now** button runs an export on demand. |
-| **Settings in one place** | Sign-in, calendar selection, sync interval, feed token and tunnel are managed in the browser. |
+| **Kiosk homepage** | Shows the clock, today's agenda, the next 7 days and tasks. Works on TVs, monitors and tablets, in landscape and portrait. |
+| **Reminders** | Shows a reminder 30 minutes before an event starts. |
+| **Settings in one place** | Sign-in, calendar selection, sync status, feed token and tunnel are one click away behind the gear icon. |
 | **Cloudflare tunnel** | Optional built-in tunnel that exposes nothing, the ICS feed only, or a read-only dashboard. |
 | **Encrypted settings** | Credentials and tokens are stored encrypted, with the key on a separate volume. |
 | **Standards-compliant output** | Repairs the exporter's all-day dates and time zones, so strict calendar clients accept the feed. |
@@ -44,12 +45,12 @@ as a private ICS feed, managed from a web dashboard.
 flowchart LR
     TT[TimeTree] -->|scheduled export| APP[timetree-ics<br>container]
     APP --- DATA[(Encrypted settings<br>and ICS file)]
-    APP -->|port 8080| LAN[Dashboard<br>home network]
+    APP -->|port 8080| LAN[Kiosk homepage<br>home network]
     APP -->|port 8081| CF[Cloudflare tunnel]
     CF --> CAL[Outlook, Google Calendar,<br>uptime monitors]
 ```
 
-Port 8080 serves the full dashboard and should stay on your home network. Port 8081 is the public side: the
+Port 8080 serves the homepage and settings and should stay on your home network. Port 8081 is the public side: the
 application decides what is reachable there, regardless of how the tunnel is configured in Cloudflare.
 
 ## Quick start
@@ -63,11 +64,12 @@ cd timetree-ics
 docker compose up -d --build
 ```
 
-Open `http://<host>:8080` and go to **Settings**:
+Open `http://<host>:8080`. A setup window guides you through the first start:
 
-1. **TimeTree account:** enter your e-mail and password, then select *Sign in & load calendars*.
-2. **Calendar & sync:** choose the calendar and interval, tick *Sync immediately afterwards*, and save.
-3. **ICS URL:** copy the URL and add it to your calendar app.
+1. **Sign in:** enter your TimeTree e-mail and password.
+2. **Choose a calendar:** the first sync starts as soon as you finish.
+
+To subscribe from a calendar app, select the gear icon on the homepage and copy the **ICS URL** from the settings.
 
 No credentials are placed in `docker-compose.yml` or `.env`.
 
@@ -101,10 +103,9 @@ The tunnel is optional and runs inside the container.
 |---|---|
 | **Nothing** (default) | `/ping` only |
 | **ICS file only** | `/calendar.ics?token=…` and `/ping` |
-| **Dashboard (read-only) + ICS** | Status and upcoming events, the ICS feed and `/ping` |
+| **Dashboard (read-only) + ICS** | The homepage without tasks and settings, the ICS feed and `/ping` |
 
-Settings and **Sync now** are never reachable through the tunnel. The public dashboard also hides the ICS URL and
-token. The mode is enforced by the application on port 8081, and for any request that carries Cloudflare headers.
+Settings, tasks and **Sync now** are never reachable through the tunnel. The mode is enforced by the application on port 8081, and for any request that carries Cloudflare headers.
 
 > [!WARNING]
 > The dashboard has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
@@ -149,7 +150,7 @@ so a tunnel is not affected by a changed host port.
 ## Security model
 
 - All settings, including the TimeTree credentials, ICS token and tunnel token, are stored in `/data/settings.enc`,
-  encrypted with Fernet (AES-128-CBC with HMAC-SHA256).
+  encrypted with Fernet (AES-128-CBC with HMAC-SHA256). Tasks are encrypted the same way in `/data/tasks.enc`.
 - The key is generated on first start and stored in `/secrets/secret.key`, on a **separate volume**.
 - Secrets are never shown in the UI, never written to logs, and reach child processes only through their environment.
 - The ICS file contains your event titles and is stored unencrypted, because it has to be served.
@@ -161,7 +162,7 @@ so a tunnel is not affected by a changed host port.
 
 | Volume | Mount | Content |
 |---|---|---|
-| `timetree-data` | `/data` | `settings.enc`, `timetree.ics`, `state.json` |
+| `timetree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `state.json` |
 | `timetree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
