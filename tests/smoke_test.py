@@ -142,7 +142,7 @@ assert b"Today" in c.get("/", headers={"Accept-Language": "fr"}).data     # Engl
 D = {"language": "de", "timezone": "Asia/Tokyo", "time_format": "12", "date_style": "numeric"}
 assert c.post("/settings/display", data=D, headers=H).status_code == 302
 assert "Einstellungen" in c.get("/settings").data.decode()                # the setting overrides the browser
-assert "0,5 h" in c.get("/settings").data.decode()
+assert "0,5 Std." in c.get("/settings").data.decode()
 assert os.environ["TZ"] == "Asia/Tokyo" and time.tzname[0] == "JST"
 page = c.get("/").data.decode()
 assert '"hour12": true' in page and '"timeZone": "Asia/Tokyo"' in page and '"dateStyle": "numeric"' in page
@@ -165,6 +165,40 @@ missing = (used | set(A.display_config_strings()) | set(A.WEATHER_TEXT)) - set(i
 assert not missing, missing
 ok("language, time zone and date formats; every UI string has a German translation")
 
+# ---- Waste collection calendar
+import io
+day = A.date.today().strftime("%Y%m%d")
+waste_ics = (
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+    f"BEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20260101T000000Z\r\nDTSTART;VALUE=DATE:{day}\r\nSUMMARY:Biotonne\r\nRRULE:FREQ=DAILY;INTERVAL=2;COUNT=9\r\nEND:VEVENT\r\n"
+    f"BEGIN:VEVENT\r\nUID:2\r\nDTSTAMP:20260101T000000Z\r\nDTSTART;VALUE=DATE:{day}\r\nSUMMARY:Altpapier\r\nEND:VEVENT\r\n"
+    "END:VCALENDAR\r\n"
+)
+send = lambda body, **form: c.post("/settings/waste", data={**form, "waste_file": (io.BytesIO(body), "w.ics")}, headers=H, content_type="multipart/form-data")
+assert c.get("/api/waste").get_json() == {"enabled": False}
+send(b"not a calendar", waste_enabled="1")
+assert not A.WASTE_FILE.exists() and A.settings["waste_enabled"] is False
+assert send(b"x" * (A.WASTE_MAX_BYTES + 1)).status_code == 302 and not A.WASTE_FILE.exists()
+send(waste_ics.encode())
+assert A.settings["waste_enabled"] is True and b"Biotonne" not in A.WASTE_FILE.read_bytes()   # encrypted
+w = c.get("/api/waste").get_json()
+assert len(w["days"]) == 7 and w["days"][1]["bins"] == [] and [b["title"] for b in w["days"][2]["bins"]] == ["Biotonne"]
+assert {b["title"]: b["color"] for b in w["days"][0]["bins"]} == {"Altpapier": "#2f6fde", "Biotonne": "#8b5a2b"}
+page = c.get("/settings").data.decode()
+assert "Altpapier" in page and 'name="waste_color_1"' in page
+stamp = c.get("/api/config").get_json()["wasteStamp"]
+r = c.post("/settings/waste", data={"waste_enabled": "1", "waste_color_0": "#112233", "waste_color_1": "bad"}, headers=H)
+assert r.headers["Location"].endswith("/settings?updated=1") and c.get("/api/config").get_json()["wasteStamp"] != stamp
+r = c.post("/settings/waste", data={"waste_color_0": "#112233"}, headers={**H, "X-Autosave": "1"})     # switch turned off
+assert r.get_json()["message"] and A.settings["waste_enabled"] is False and c.get("/api/waste").get_json() == {"enabled": False}
+assert c.get("/api/config").get_json()["waste"] is False
+c.post("/settings/waste", data={"waste_enabled": "1", "waste_color_0": "#112233"}, headers={**H, "X-Autosave": "1"})
+assert c.get("/api/waste").get_json()["enabled"] is True
+assert A.settings["waste_colors"] == {"Altpapier": "#112233"} and c.get("/api/config").get_json()["waste"] is True
+c.post("/settings/waste", data={"remove": "1"}, headers=H)
+assert not A.WASTE_FILE.exists() and A.settings["waste_enabled"] is False and A.settings["waste_colors"] == {}
+ok("waste collection: upload validated, stored encrypted, colors, 7 days, remove")
+
 # ---- Homepage appearance: background, weather and greeting, without any network access
 with mock.patch.object(A, "fetch_json", return_value=[{"id": "7", "author": "Ann", "width": 300, "height": 200, "url": "https://u/7"}]) as f:
     assert c.get("/api/background").get_json()["author"] == "Ann"
@@ -173,6 +207,25 @@ with mock.patch.object(A, "fetch_json", return_value=[{"id": "7", "author": "Ann
     assert c.post("/api/background/refresh", headers=H).status_code == 204
     c.get("/api/background")
     assert f.call_count == 2
+photo = {"url": "new", "author": "Bo", "link": "l", "location": ""}
+with mock.patch.object(A, "_picsum_photo", return_value=photo):
+    A._backgrounds.clear()
+    A.settings["background_every"] = "hour"
+    c.get("/api/background")
+    assert A._load_backgrounds()["landscape"]["url"] == "new"      # survives a restart
+    A._backgrounds["landscape"].update(url="old", fetched=time.time() - 7200)
+    A.settings["background_every"] = "fixed"
+    assert c.get("/api/background").get_json()["url"] == "old"
+    A.settings["background_every"] = "hour"                        # the setting applies to the current photo
+    assert c.get("/api/background").get_json()["url"] == "new"
+    A._backgrounds["landscape"].update(url="old", fetched=time.time() - 600)
+    A.settings.update(background_every="custom", background_minutes=30)
+    assert c.get("/api/background").get_json()["url"] == "old"
+    A.settings["background_minutes"] = 5
+    assert c.get("/api/background").get_json()["url"] == "new"
+c.post("/settings/display", data={"tasks_enabled": "1", "background_every": "custom", "background_minutes": "0"}, headers=H)
+assert A.settings["background_every"] == "custom" and A.settings["background_minutes"] == 1
+A.settings.update(background_every="hour", background_minutes=30)
 A._backgrounds.clear()
 with mock.patch.object(A, "fetch_json", side_effect=OSError("offline")):
     assert c.get("/api/background").get_json() == {"url": None}
@@ -184,7 +237,7 @@ with mock.patch.object(A, "fetch_json", return_value=place):
 assert A.settings["weather_city"] == "Rendsburg" and A.settings["weather_lat"] == 54.3
 with mock.patch.object(A, "fetch_json", return_value={"current": {"temperature_2m": 9.6, "weather_code": 61}}):
     w = c.get("/api/weather", headers={"Accept-Language": "de"}).get_json()
-assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "🌧️", "city": "Rendsburg"}
+assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "weather-day-rain", "city": "Rendsburg", "hours": [], "days": []}
 cfg = c.get("/api/config").get_json()
 assert cfg["version"] == A.VERSION
 assert cfg["name"] == "Sam" and cfg["greeting"] is True
@@ -193,6 +246,26 @@ for bad in ({"background_color": "red"}, {"font_family": "x"}, {"background_ever
     assert c.post("/settings/display", data={"tasks_enabled": "1", **bad}, headers=H).status_code == 400
 c.post("/settings/display", data={"tasks_enabled": "1", "clock_size": "9999"}, headers=H)
 assert A.settings["clock_size"] == 200
+A.settings.update(weather_enabled=True, weather_lat=54.3, weather_lon=9.7)
+A._weather.clear()
+times = [f"2026-11-{d:02d}T{h:02d}:00" for d in range(1, 9) for h in range(24)]
+answer = {
+    "current": {"time": "2026-11-01T17:15", "temperature_2m": 9.6, "weather_code": 61},
+    "hourly": {"time": times, "temperature_2m": [5.4] * len(times), "weather_code": [0] * len(times)},
+    "daily": {"time": [f"2026-11-{d:02d}" for d in range(1, 9)], "temperature_2m_max": [8.6] * 8,
+              "temperature_2m_min": [1.2] * 8, "weather_code": [3] * 8},
+}
+with mock.patch.object(A, "fetch_json", return_value=answer):
+    w = c.get("/api/weather").get_json()
+assert len(w["hours"]) == 10 and w["hours"][0] == {"time": "2026-11-01T17:00", "temperature": 5, "icon": "weather-day-clearsky"}
+assert len(w["days"]) == 7 and w["days"][0] == {"date": "2026-11-01", "high": 9, "low": 1, "icon": "weather-day-overcastclouds"}
+assert A.weather_icon(0, False) == "weather-night-clearsky" and A.weather_icon(80, False) == "weather-night-rain"
+sprite = (Path(A.__file__).parent / "static" / "weather-sprites.svg").read_text()
+assert all(f'id="weather-{time}-{name}"' in sprite for name in A.WEATHER_ICONS for time in ("day", "night") if (time, name) != ("night", "sunnyrain"))
+assert c.post("/settings/display", data={"tasks_enabled": "1", "weather_forecast": "minutes"}, headers=H).status_code == 400
+c.post("/settings/display", data={"tasks_enabled": "1", "weather_enabled": "1", "weather_forecast": "days"}, headers=H)
+assert c.get("/api/config").get_json()["forecast"] == "days"
+c.post("/settings/display", data={"tasks_enabled": "1", "weather_forecast": "off"}, headers=H)
 c.post("/settings/display", data={"tasks_enabled": "1", "clock_size": "100", "weather_city": ""}, headers=H)
 assert A.settings["weather_city"] == ""
 ok("background, weather and greeting: cached, offline-safe, validated")
@@ -353,7 +426,7 @@ for _ in range(10):
     time.sleep(0.2)
 assert seen.read_text().strip() == T, "token must arrive via the TUNNEL_TOKEN environment variable"
 page = c.get("/settings").data
-assert T.encode() not in page and b"Status:" in page and b"connected" in page
+assert T.encode() not in page and b">Status<" in page and b"Connected" in page
 assert T.encode() not in (data / "settings.enc").read_bytes()
 proc = A._tunnel["proc"]
 ok("tunnel starts, token via environment, not in HTML/plaintext, status connected")

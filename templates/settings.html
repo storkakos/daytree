@@ -146,6 +146,14 @@
             <label><input type="radio" name="weather_unit" value="fahrenheit" {{ 'checked' if s.weather_unit == 'fahrenheit' }}><span>°F</span></label>
           </div>
         </div>
+        <div class="row">
+          <span class="label">{{ _("Forecast") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="weather_forecast" value="off" {{ 'checked' if s.weather_forecast == 'off' }}><span>{{ _("Off") }}</span></label>
+            <label><input type="radio" name="weather_forecast" value="hours" {{ 'checked' if s.weather_forecast == 'hours' }}><span>{{ _("10 h") }}</span></label>
+            <label><input type="radio" name="weather_forecast" value="days" {{ 'checked' if s.weather_forecast == 'days' }}><span>{{ _("7 days") }}</span></label>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -166,7 +174,12 @@
             <option value="hour" {{ 'selected' if s.background_every == 'hour' }}>{{ _("Every hour") }}</option>
             <option value="day" {{ 'selected' if s.background_every == 'day' }}>{{ _("Every day") }}</option>
             <option value="fixed" {{ 'selected' if s.background_every == 'fixed' }}>{{ _("Never") }}</option>
+            <option value="custom" {{ 'selected' if s.background_every == 'custom' }}>{{ _("Custom") }}</option>
           </select>
+        </div>
+        <div class="row" id="background-minutes" {{ 'hidden' if s.background_every != 'custom' }}>
+          <label for="background_minutes">{{ _("Minutes") }}</label>
+          <input id="background_minutes" type="number" name="background_minutes" min="1" max="1440" value="{{ s.background_minutes }}">
         </div>
         <div class="row">
           <label for="background_blur">{{ _("Blur") }}</label>
@@ -204,6 +217,25 @@
     <noscript><button class="action">{{ _("Save") }}</button></noscript>
   </form>
 
+  <form method="post" action="{{ url_for('settings_waste') }}" enctype="multipart/form-data" class="group" id="waste-form">
+    <h2>{{ _("Waste collection") }}</h2>
+    <div class="card">
+      <div class="row">
+        <label for="waste_enabled">{{ _("Show waste collection") }}</label>
+        <span class="switch"><input id="waste_enabled" type="checkbox" name="waste_enabled" value="1" {{ 'checked' if s.waste_enabled }}><span></span></span>
+      </div>
+      <div class="row stack">
+        <label for="waste_file">{{ _("Calendar file (.ics)") }}</label>
+        <input id="waste_file" type="file" name="waste_file" accept=".ics,text/calendar">
+      </div>
+      {% for title, color in waste %}
+      <div class="row"><label for="waste_color_{{ loop.index0 }}">{{ title }}</label><input id="waste_color_{{ loop.index0 }}" class="swatch" type="color" name="waste_color_{{ loop.index0 }}" value="{{ color }}"></div>
+      {% endfor %}
+      {% if waste %}<button class="action destructive" name="remove" value="1">{{ _("Remove calendar") }}</button>{% endif %}
+    </div>
+    <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin on collection days.") }}</p>
+  </form>
+
   <section class="group">
     <h2>{{ _("Calendar subscription") }}</h2>
     <div class="card">
@@ -230,7 +262,7 @@
   <form method="post" action="{{ url_for('settings_tunnel') }}" class="group">
     <h2>{{ _("Cloudflare tunnel") }}</h2>
     <div class="card">
-      <div class="row"><span class="label">Status:</span><span class="value">{{ tunnel.status }}{% if tunnel.error %} · {{ tunnel.error }}{% endif %}</span></div>
+      <div class="row"><span class="label">{{ _("Status") }}</span><span class="value">{{ _(tunnel.status|capitalize) }}{% if tunnel.error %} · {{ _(tunnel.error) }}{% endif %}</span></div>
       <div class="row">
         <label for="tunnel_enabled">{{ _("Tunnel enabled") }}</label>
         <span class="switch"><input id="tunnel_enabled" type="checkbox" name="tunnel_enabled" value="1" {{ 'checked' if s.tunnel_enabled }}><span></span></span>
@@ -288,13 +320,19 @@
     document.documentElement.classList.add('embedded');
     document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); notify('close-settings'); });
   }
+  // A saved form reloads this page, so the homepage around it hears about the change here
+  if (location.search.includes('updated')) {
+    notify('settings-changed');
+    history.replaceState(null, '', location.pathname);
+  }
   const form = document.getElementById('display');
   let timer;
   let queue = Promise.resolve();
   // Saves run one after the other, so an older form state can never overwrite a newer one
-  const autosave = () => { queue = queue.then(save, save); };
-  async function save() {
-    const response = await fetch(form.action, { method: 'POST', headers: { 'X-Autosave': '1' }, body: new FormData(form) });
+  const saveLater = target => { queue = queue.then(() => save(target), () => save(target)); };
+  const autosave = () => saveLater(form);
+  async function save(target) {
+    const response = await fetch(target.action, { method: 'POST', headers: { 'X-Autosave': '1' }, body: new FormData(target) });
     if (!response.ok) return;
     const { message, weather_city: city } = await response.json();
     // Only a found place is written back: an older save must not erase what is being typed
@@ -306,11 +344,20 @@
     notify('settings-changed');
   }
   form.addEventListener('submit', event => event.preventDefault());
+  const wasteForm = document.getElementById('waste-form');
+  // A new file changes the list of collections, so only that one reloads the page
+  wasteForm.addEventListener('change', event => {
+    if (event.target.type === 'file') wasteForm.submit();
+    else saveLater(wasteForm);
+  });
   form.addEventListener('change', autosave);
   form.addEventListener('input', event => {
     if (event.target.type !== 'range') return;
     clearTimeout(timer);
     timer = setTimeout(autosave, 150);
+  });
+  document.getElementById('background_every').addEventListener('change', event => {
+    document.getElementById('background-minutes').hidden = event.target.value !== 'custom';
   });
   document.getElementById('new-photo').addEventListener('click', async () => {
     await fetch('/api/background/refresh', { method: 'POST' });
