@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Kiosk homepage for TV, monitor and tablet, in landscape and portrait, with clock, today's agenda, the next
+  7 days, tasks and reminders 30 minutes before an event.
+- First-time setup popup that requires the TimeTree sign-in and calendar selection.
+- Encrypted task storage.
+
+### Changed
+
+- The sync status and **Sync now** moved to the settings page, opened with the gear icon on the homepage.
+- The read-only public dashboard is now the kiosk view without tasks and settings.
+- The CSRF check now covers all state-changing requests.
+
 ## [0.9.0] - 2026-11-01
 
 First public beta. Tested end to end with a real TimeTree account, a Cloudflare tunnel, Outlook and Google Calendar.

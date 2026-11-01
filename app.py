@@ -25,6 +25,7 @@ KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
 STATE_FILE = DATA / "state.json"
 SETTINGS_FILE = DATA / "settings.enc"      # fully encrypted (Fernet)
+TASKS_FILE = DATA / "tasks.enc"            # fully encrypted (Fernet)
 LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, then deleted
 
 MIN_MINUTES, MAX_MINUTES, STEP_MINUTES = 30, 1440, 30
@@ -37,6 +38,7 @@ app.secret_key = secrets.token_hex(16)
 
 _lock = threading.Lock()          # one sync at a time
 _settings_lock = threading.Lock()
+_tasks_lock = threading.Lock()
 _next_due = 0.0
 _state = {"last_run": None, "last_success": None, "ok": None, "message": "No sync yet", "events": 0}
 
@@ -86,14 +88,18 @@ DEFAULTS = {
 }
 
 
+def _write_encrypted(path, value):
+    DATA.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(FERNET.encrypt(json.dumps(value, ensure_ascii=False).encode()))
+    tmp.replace(path)
+
+
 def save_settings(s):
     with _settings_lock:
-        DATA.mkdir(parents=True, exist_ok=True)
-        tmp = SETTINGS_FILE.with_suffix(".tmp")
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "wb") as f:
-            f.write(FERNET.encrypt(json.dumps(s, ensure_ascii=False).encode()))
-        tmp.replace(SETTINGS_FILE)
+        _write_encrypted(SETTINGS_FILE, s)
 
 
 def load_settings():
@@ -126,6 +132,10 @@ def load_settings():
 
 
 settings = load_settings()
+
+
+def needs_setup():
+    return not (settings["email"] and settings["password"] and settings["calendar_code"])
 
 
 def view():
@@ -349,8 +359,8 @@ def _inject():
 
 @app.before_request
 def guard():
-    # CSRF protection: form POSTs are only accepted from this site itself
-    if request.method == "POST":
+    # CSRF protection: state-changing requests are only accepted from this site itself
+    if request.method not in ("GET", "HEAD"):
         origin = request.headers.get("Origin") or request.headers.get("Referer")
         if not origin or urlparse(origin).netloc != request.host:
             abort(403)
@@ -364,8 +374,8 @@ def guard():
         return                                   # token is checked in the route
     if mode == "ics":
         abort(404)                               # only the ICS file is public
-    # mode "dashboard": read-only - no settings, no triggering syncs
-    if request.method != "GET" or request.path.startswith("/settings"):
+    # mode "dashboard": read-only - no settings, no tasks, no triggering syncs
+    if request.method != "GET" or request.path.startswith(("/settings", "/api/tasks")):
         abort(404)
 
 
@@ -389,40 +399,46 @@ def ics_urls():
     return local, pub
 
 
-def upcoming(limit=15):
+def _local(value):
+    """Event time as naive local time of the container; all-day dates are returned unchanged."""
+    if isinstance(value, datetime) and value.tzinfo:
+        return value.astimezone().replace(tzinfo=None)
+    return value
+
+
+def occurrences(first, last):
+    """Events from first up to last, sorted, with every occurrence of recurring events."""
     if not ICS_FILE.exists():
         return []
-    today = date.today()
     try:
         cal = Calendar.from_ical(ICS_FILE.read_bytes())
         # Expands RRULE/EXDATE, so every occurrence of a recurring event is listed
-        events = recurring_ical_events.of(cal).between(today, today + timedelta(days=61))
+        events = recurring_ical_events.of(cal).between(first, last)
     except Exception:
         return []
     out = []
     for ev in events:
-        start = ev.decoded("DTSTART")
-        if isinstance(start, datetime) and start.tzinfo:
-            start = start.astimezone().replace(tzinfo=None)      # show the container's local time
-        d = start.date() if isinstance(start, datetime) else start
+        start = _local(ev.decoded("DTSTART"))
+        end = _local(ev.decoded("DTEND")) if "DTEND" in ev else start
+        timed = isinstance(start, datetime)
         out.append({
-            "date": d,
-            "time": start.strftime("%H:%M") if isinstance(start, datetime) else "all day",
             "title": str(ev.get("SUMMARY", "(untitled)")),
-            "sort": start if isinstance(start, datetime) else datetime.combine(start, datetime.min.time()),
+            "date": start.date() if timed else start,
+            "end_date": end.date() if timed else max(start, end - timedelta(days=1)),  # all-day DTEND is exclusive
+            "time": start.strftime("%H:%M") if timed else "",
+            "end_time": end.strftime("%H:%M") if timed else "",
+            "all_day": not timed,
+            "sort": start if timed else datetime.combine(start, datetime.min.time()),
         })
     out.sort(key=lambda e: e["sort"])
-    return out[:limit]
+    return out
 
 
 # ---------------------------------------------------------------- routes
 @app.route("/")
 def dashboard():
-    local, pub = ics_urls()
     return render_template(
-        "dashboard.html", state=_state, events=upcoming(), s=view(),
-        ics_url=pub or local, running=_lock.locked(), tunnel=_tunnel,
-        next_run=datetime.fromtimestamp(_next_due).strftime("%H:%M") if _next_due else None,
+        "kiosk.html", s=view(), setup=needs_setup() and not is_public(), default_minutes=DEFAULTS["interval_minutes"],
     )
 
 
@@ -430,17 +446,23 @@ def dashboard():
 def sync_now():
     _reset_timer()
     threading.Thread(target=run_sync, daemon=True).start()
-    return redirect(url_for("dashboard"))
+    return redirect(url_for("settings_page"))
 
 
 @app.get("/settings")
 def settings_page():
     local, pub = ics_urls()
     return render_template(
-        "settings.html", s=view(),
+        "settings.html", s=view(), state=_state, running=_lock.locked(),
+        next_run=datetime.fromtimestamp(_next_due).strftime("%H:%M") if _next_due else None,
         intervals=[(m, _hours(m)) for m in range(MIN_MINUTES, MAX_MINUTES + 1, STEP_MINUTES)],
         ics_local=local, ics_pub=pub, tunnel=_tunnel, public_port=PUBLIC_PORT,
     )
+
+
+def _back():
+    """Forms of the first-time setup return to the homepage, all others to the settings page."""
+    return redirect(url_for("dashboard" if request.form.get("setup") else "settings_page"))
 
 
 @app.post("/settings/login")
@@ -450,19 +472,21 @@ def settings_login():
     password = request.form.get("password", "") or settings["password"]  # empty = keep stored password
     if not email or not password:
         flash("Enter e-mail and password.", "err")
-        return redirect(url_for("settings_page"))
+        return _back()
     try:
         cals = fetch_calendars(email, password)
     except Exception as e:  # noqa: BLE001
         flash(f"Login failed: {str(e)[:200]}", "err")
-        return redirect(url_for("settings_page"))
+        return _back()
     settings.update(email=email, password=password, calendars=cals)
-    if not any(c["code"] == settings["calendar_code"] for c in cals):
+    if request.form.get("setup"):
+        settings.update(calendar_code="", calendar_name="")              # the setup asks for the calendar next
+    elif not any(c["code"] == settings["calendar_code"] for c in cals):
         # previous selection no longer valid -> preselect the first calendar
         settings.update(calendar_code=cals[0]["code"] if cals else "", calendar_name=cals[0]["name"] if cals else "")
     save_settings(settings)
     flash(f"Signed in. {len(cals)} calendars found.", "ok")
-    return redirect(url_for("settings_page"))
+    return _back()
 
 
 @app.post("/settings/save")
@@ -484,7 +508,7 @@ def settings_save():
     flash("Settings saved.", "ok")
     if request.form.get("sync_now"):
         threading.Thread(target=run_sync, daemon=True).start()
-    return redirect(url_for("settings_page"))
+    return _back()
 
 
 @app.post("/settings/tunnel")
@@ -518,6 +542,66 @@ def settings_tunnel():
     _tunnel_restart.set()
     flash("Sharing settings saved.", "ok")
     return redirect(url_for("settings_page"))
+
+
+@app.get("/api/events")
+def api_events():
+    today = date.today()
+    events = occurrences(today, today + timedelta(days=8))
+    return jsonify(events=[
+        {**e, "date": e["date"].isoformat(), "end_date": e["end_date"].isoformat(), "sort": None} for e in events
+    ])
+
+
+def load_tasks():
+    if not TASKS_FILE.exists():
+        return []
+    return json.loads(FERNET.decrypt(TASKS_FILE.read_bytes()))
+
+
+def _task_title():
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title", "")).strip()
+    if not title or len(title) > 200:
+        abort(400)
+    return title
+
+
+@app.get("/api/tasks")
+def api_tasks():
+    return jsonify(tasks=load_tasks())
+
+
+@app.post("/api/tasks")
+def api_task_add():
+    task = {"id": secrets.token_hex(8), "title": _task_title(), "done": False}
+    with _tasks_lock:
+        _write_encrypted(TASKS_FILE, load_tasks() + [task])
+    return jsonify(task), 201
+
+
+@app.patch("/api/tasks/<task_id>")
+def api_task_update(task_id):
+    done = bool((request.get_json(silent=True) or {}).get("done"))
+    with _tasks_lock:
+        tasks = load_tasks()
+        task = next((t for t in tasks if t["id"] == task_id), None)
+        if task is None:
+            abort(404)
+        task["done"] = done
+        _write_encrypted(TASKS_FILE, tasks)
+    return jsonify(task)
+
+
+@app.delete("/api/tasks/<task_id>")
+def api_task_delete(task_id):
+    with _tasks_lock:
+        tasks = load_tasks()
+        remaining = [t for t in tasks if t["id"] != task_id]
+        if len(remaining) == len(tasks):
+            abort(404)
+        _write_encrypted(TASKS_FILE, remaining)
+    return "", 204
 
 
 @app.route("/api/status")

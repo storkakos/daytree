@@ -101,9 +101,38 @@ for sent, stored in (("100", 90), ("1440", 1440), ("9999", 1440)):
 r = c.get("/settings").data
 assert b'<option value="30" >0.5 h</option>' in r and b'<option value="1440" selected>24 h</option>' in r
 assert r.count(b"<option value=") >= 48
-assert b"Every 24 h" in c.get("/").data
+assert b"Every 24 h" in c.get("/settings").data
 assert b"PLAINPW-123" not in (data / "settings.enc").read_bytes()
 ok("login, calendar list, selection, interval minimum")
+
+# ---- First-time setup: the popup blocks the homepage until TimeTree login and calendar are done
+page = c.get("/").data
+assert b'id="setup"' not in page and b'id="gear"' in page and b'href="/settings"' in page
+saved = {k: A.settings[k] for k in ("email", "password", "calendar_code", "calendar_name", "calendars")}
+A.settings.update(email="", password="", calendar_code="", calendar_name="", calendars=[])
+page = c.get("/").data
+assert b'id="setup"' in page and b"Step 1 of 2" in page and b'id="gear"' not in page
+with mock.patch("requests.put", return_value=Resp(200, cookies={"_session_id": "S"})),      mock.patch("requests.Session.get", return_value=Resp(200, cal_json)):
+    r = c.post("/settings/login", data={"email": "a@b.de", "password": "PLAINPW-123", "setup": "1"}, headers=H)
+assert r.status_code == 302 and r.location.endswith("/") and A.settings["calendar_code"] == ""
+assert b"Step 2 of 2" in c.get("/").data
+r = c.post("/settings/save", data={"calendar_code": "fam123", "interval": "180", "setup": "1"}, headers=H)
+assert r.location.endswith("/") and A.settings["calendar_code"] == "fam123"
+assert b'id="setup"' not in c.get("/").data
+A.settings.update(saved)
+ok("first-time setup: popup until login and calendar are done, then gear to settings")
+
+# ---- Tasks: stored encrypted, full lifecycle
+t = c.post("/api/tasks", json={"title": "Secret task title"}, headers=H).get_json()
+assert b"Secret task title" not in (data / "tasks.enc").read_bytes()
+assert stat.S_IMODE((data / "tasks.enc").stat().st_mode) == 0o600
+assert c.patch(f"/api/tasks/{t['id']}", json={"done": True}, headers=H).get_json()["done"] is True
+assert c.get("/api/tasks").get_json()["tasks"][0]["done"] is True
+assert c.post("/api/tasks", json={"title": " "}, headers=H).status_code == 400
+assert c.delete(f"/api/tasks/{t['id']}").status_code == 403               # no Origin -> CSRF check
+assert c.delete(f"/api/tasks/{t['id']}", headers=H).status_code == 204
+assert c.delete(f"/api/tasks/{t['id']}", headers=H).status_code == 404
+ok("tasks: encrypted at rest, add, complete, delete, CSRF protected")
 
 # ---- 5) CSRF
 assert c.post("/sync", headers={"Origin": "http://evil.example"}).status_code == 403
@@ -145,12 +174,19 @@ ok("mode ics: only /calendar.ics and /ping public, Cloudflare headers detected")
 set_mode("dashboard")
 r = c.get("/", **PUB)
 assert r.status_code == 200 and tok.encode() not in r.data and b"/settings" not in r.data and b"Sync now" not in r.data
+assert b"/api/tasks" not in r.data and b'id="gear"' not in r.data and b'id="tasks"' not in r.data
+A.settings["calendar_code"], code = "", A.settings["calendar_code"]
+assert b'id="setup"' not in c.get("/", **PUB).data                        # the setup is never shown publicly
+A.settings["calendar_code"] = code
 assert c.get("/settings", **PUB).status_code == 404
 assert c.post("/sync", headers=H, **PUB).status_code == 404
 assert c.post("/settings/save", data={"interval": "10"}, headers=H, **PUB).status_code == 404
 assert c.get(f"/calendar.ics?token={tok}", **PUB).status_code == 200
 assert c.get("/ping", **PUB).status_code == 200
-assert tok.encode() in c.get("/").data                                   # internal view shows the URL
+assert tok.encode() in c.get("/settings").data                           # internal view shows the URL
+assert c.get("/api/events", **PUB).status_code == 200
+assert c.get("/api/tasks", **PUB).status_code == 404
+assert c.post("/api/tasks", json={"title": "x"}, headers=H, **PUB).status_code == 404
 ok("mode dashboard: read-only; no token/settings/sync on the public side")
 
 set_mode("bogus")
@@ -183,12 +219,15 @@ def d(days, fmt="%Y%m%d"):
     "BEGIN:VEVENT", "UID:6", "SUMMARY:Far", f"DTSTART;VALUE=DATE:{d(90)}", f"DTEND;VALUE=DATE:{d(91)}", "END:VEVENT",
     "END:VCALENDAR", "",
 ]))
-ev = A.upcoming(limit=50)
+ev = A.occurrences(today, today + timedelta(days=61))
 titles = [e["title"] for e in ev]
 assert titles.count("Weekly") == 3, titles                                # today, +14, +21 (+7 excluded by EXDATE)
 assert {"AllDay", "Tokyo", "Utc"} <= set(titles) and "Past" not in titles and "Far" not in titles, titles
 assert [e["sort"] for e in ev] == sorted(e["sort"] for e in ev)
-assert next(e for e in ev if e["title"] == "AllDay")["time"] == "all day"
+allday = next(e for e in ev if e["title"] == "AllDay")
+assert allday["all_day"] and allday["date"] == allday["end_date"]         # exclusive DTEND is not a second day
+api = c.get("/api/events").get_json()["events"]
+assert {"title", "date", "end_date", "time", "all_day"} <= set(api[0]) and "AllDay" in [e["title"] for e in api]
 assert c.get("/").status_code == 200
 ok("preview: all-day, timezones, recurrences and EXDATE handled")
 

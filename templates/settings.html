@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% set active = 'settings' %}
 {% block content %}
+  <div class="card">
+    <div class="row">
+      <div>
+        <span class="dot {{ 'ok' if state.ok else ('err' if state.ok is false else 'na') }}"></span>
+        <strong>{{ 'Last sync succeeded' if state.ok else ('Last sync failed' if state.ok is false else 'No sync yet') }}</strong>
+        <div class="muted">
+          {% if s.calendar_name %}Calendar: {{ s.calendar_name }} · {% endif %}
+          {% if state.last_success %}Success: {{ state.last_success[:19].replace('T',' ') }} UTC · {% endif %}
+          {{ state.events }} events
+        </div>
+        <div class="muted">Every {{ s.interval_label }}{% if next_run %} · next sync about {{ next_run }}{% endif %}</div>
+        {% if state.ok is false %}<div class="muted">{{ state.message }}</div>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('sync_now') }}">
+        <button {{ 'disabled' if running }}>{{ 'Running …' if running else 'Sync now' }}</button>
+      </form>
+    </div>
+  </div>
+
   <form method="post" action="{{ url_for('settings_login') }}" class="card">
     <h2>1. TimeTree account</h2>
     <div class="muted">A TimeTree account with e-mail and password is required (social-only logins have no password). Credentials are stored encrypted.</div>

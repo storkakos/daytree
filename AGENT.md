@@ -75,7 +75,8 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | Path | Purpose |
 |---|---|
 | `app.py` | The whole backend: encryption, settings, sync scheduler, tunnel supervisor, access guard, routes. |
-| `templates/base.html`, `dashboard.html`, `settings.html` | UI (server-rendered, no JS, light/dark via CSS). |
+| `templates/kiosk.html` | Homepage: agenda, week, tasks, reminders and setup popup. Vanilla JS, responsive for landscape and portrait. |
+| `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service; **named volumes** `timetree-data` (`/data`) and `timetree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.txt` | `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
@@ -88,6 +89,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | File | Content | Protection |
 |---|---|---|
 | `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname. | Encrypted, mode 600 |
+| `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
 | `/data/timetree.ics` | Latest successful export. Replaced atomically only on success. | **Not encrypted** (it must be served; contains event titles) |
 | `/data/state.json` | Last run / success time, event count, last message. | Plain, contains no secrets |
@@ -98,7 +100,9 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 
 | Route | Internal (8080) | Public side (8081 or request with `Cf-Ray` / `Cf-Connecting-Ip`) |
 |---|---|---|
-| `GET /` dashboard | yes | only in mode `dashboard` (read-only view: no ICS URL, no settings link, no sync button) |
+| `GET /` kiosk homepage with first-time setup popup | yes | only in mode `dashboard` (read-only view: no settings gear, no tasks, no setup popup) |
+| `GET /api/events` | yes | only in mode `dashboard` |
+| `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
 | `POST /sync` | yes | never |
 | `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/tunnel` | yes | never |
 | `GET /api/status` | yes | only in mode `dashboard` |
@@ -106,7 +110,7 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, in every mode |
 | anything else on public side in mode `off` | – | 404 |
 
-All `POST`s additionally require a same-origin `Origin`/`Referer` (basic CSRF protection).
+All state-changing requests additionally require a same-origin `Origin`/`Referer` (basic CSRF protection).
 
 ### Key behaviours you must preserve
 
@@ -238,10 +242,10 @@ real TimeTree/Cloudflare credentials**.
 
 ## 7. Open questions for the owner (do not decide these yourself)
 
-1. Should the TV/kiosk dashboard from `gottfried1980/timetable-docker` (daily agenda, week view, tasks,
-   reminders) be integrated as an additional container/view? (Offered earlier; unanswered.)
-2. Is a German UI (i18n) wanted later?
-3. Should Settings ever be reachable through the tunnel (currently never; internal only)?
+Decided by the owner: the homepage is a TV/kiosk view for landscape and portrait screens, without an
+Austrian or regional calendar, photos or music. A German UI (i18n) is wanted and not implemented yet.
+
+1. Should Settings ever be reachable through the tunnel (currently never; internal only)?
 
 ---
 
