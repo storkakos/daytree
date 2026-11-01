@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-01
+
+The project is now called Daytree and has grown from a calendar export into a home calendar app.
+
 ### Added
 
 - Kiosk homepage for TV, monitor and tablet, in landscape and portrait, with clock, today's agenda, the next
@@ -58,5 +62,6 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.9.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.10.0...dev
+[0.10.0]: https://github.com/storkakos/daytree/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/storkakos/daytree/releases/tag/v0.9.0
