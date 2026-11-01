@@ -14,7 +14,7 @@
           --font:system-ui,sans-serif; --weight:300; --scale:1; --clock-scale:1; }
   * { box-sizing:border-box; }
   html { font-size:calc(2.1vmin * var(--scale)); }
-  @media (max-width:666px), (max-height:666px) { html { font-size:calc(14px * var(--scale)); } }
+  @media (max-width:666px), (max-height:666px) { html { font-size:calc(87.5% * var(--scale)); } }
   @media (min-width:1715px) and (min-height:1715px) { html { font-size:calc(36px * var(--scale)); } }
   body { margin:0; height:100vh; height:100dvh; overflow:hidden; display:flex; flex-direction:column; padding:1rem 1.25rem;
          font:400 1rem/1.35 var(--font); -webkit-font-smoothing:antialiased; background:#14181d; color:var(--fg); text-shadow:0 1px 3px rgba(0,0,0,.27); }
@@ -126,6 +126,22 @@
   .step { font-size:.85rem; color:var(--solid-muted); }
   .msg { padding:.6rem .8rem; border-radius:.7rem; margin-bottom:.5rem; color:#fff; background:#34c759; }
   .msg.err { background:#ff3b30; }
+  /* Phones scroll instead of fitting everything on one screen, so no panel gets squeezed away */
+  @media (max-width:700px), (max-height:500px) {
+    body { height:auto; min-height:100vh; overflow:auto; padding-top:2.2rem; }
+    header { flex-wrap:wrap; }
+    header::before { display:none; }
+    #centre, #corner { flex:1 1 100%; margin-left:0; padding-right:0; }
+    #clock { font-size:calc(3.2rem * var(--clock-scale)); }
+    #analog { width:calc(5rem * var(--clock-scale)); height:calc(5rem * var(--clock-scale)); }
+    #greeting { font-size:1.25rem; }
+    main { display:block; flex:none; }
+    main > * + * { margin:.9rem 0 0; }
+    .column { display:block; max-height:none; }
+    ul { overflow:visible; }
+    #gear { position:absolute; }
+    #credit { position:absolute; max-width:calc(100% - 5rem); }
+  }
 </style>
 <link id="font-link" rel="stylesheet" href="{{ config.fontUrl or 'data:text/css,' }}">
 </head>
@@ -224,6 +240,14 @@
 // Oldest supported browser: Chromium 56. One unsupported syntax stops this whole script.
 (() => {
   let CONFIG = {{ config|tojson }};
+  // In automatic mode the browser's own language wins, whatever a single request happened to send
+  if (CONFIG.languageAuto) {
+    const browser = (navigator.language || '').slice(0, 2);
+    if (CONFIG.languages.includes(browser)) {
+      document.cookie = `lang=${browser}; path=/; max-age=31536000; SameSite=Lax`;
+      if (browser !== CONFIG.language && document.cookie.includes(`lang=${browser}`)) { location.reload(); return; }
+    }
+  }
   const text = key => CONFIG.text[key];
   const $ = id => document.getElementById(id);
   const make = (tag, className, content) => {

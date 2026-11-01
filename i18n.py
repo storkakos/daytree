@@ -94,7 +94,7 @@ GERMAN = {
     "Minutes": "Minuten",
     "Blur": "Weichzeichner",
     "Brightness": "Helligkeit",
-    "New photo": "Neues Foto",
+    "Apply": "Übernehmen",
     "Photos come from Lorem Picsum.": "Die Fotos kommen von Lorem Picsum.",
     "Waste collection": "Müllabfuhr",
     "Show waste collection": "Müllabfuhr anzeigen",

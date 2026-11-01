@@ -27,7 +27,7 @@ from icalendar import Calendar
 
 from i18n import translate
 
-VERSION = "0.10.0"
+VERSION = "0.12.0"
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
@@ -221,6 +221,8 @@ apply_timezone()
 def language():
     if settings["language"] in LANGUAGES:
         return settings["language"]
+    if request.cookies.get("lang") in LANGUAGES:     # set by the homepage from the browser language
+        return request.cookies["lang"]
     return request.accept_languages.best_match(LANGUAGES) or LANGUAGES[0]
 
 
@@ -487,6 +489,14 @@ def guard():
 
 
 @app.after_request
+def no_stale_pages(response):
+    # Pages depend on the language and carry the app version, so a stored copy must never be shown
+    if response.mimetype == "text/html":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.after_request
 def log_ics_fetch(response):
     # Shows whether calendar services reach the app. The path only: the query string holds the token.
     if request.path == "/calendar.ics":
@@ -563,6 +573,8 @@ def display_config():
         font_url = f"https://fonts.googleapis.com/css2?family={urllib.parse.quote_plus(font)}:wght@300;400;500;600;700&display=swap"
     return {
         "language": language(),
+        "languageAuto": settings["language"] == "auto",
+        "languages": LANGUAGES,
         "locale": "de-DE" if language() == "de" else "en-GB",
         "hour12": settings["time_format"] == "12",
         "timeZone": effective_timezone(),

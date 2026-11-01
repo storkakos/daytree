@@ -246,6 +246,8 @@ real TimeTree/Cloudflare credentials**.
 - Do not change the exposure-mode semantics without updating the UI text, README, the smoke test and this file.
 - Keep the single-worker constraint.
 - When you finish a task, run `tests/smoke_test.py`.
+- Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
+  and very large changes the first number (`+.x.x`).
 
 ---
 
