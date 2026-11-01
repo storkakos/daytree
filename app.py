@@ -26,6 +26,7 @@ from icalendar import Calendar
 
 from i18n import translate
 
+VERSION = "0.10.0-dev"
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
@@ -592,7 +593,7 @@ def settings_page():
         next_run=datetime.fromtimestamp(_next_due).strftime("%H:%M") if _next_due else None,
         intervals=[(m, _hours(m)) for m in range(MIN_MINUTES, MAX_MINUTES + 1, STEP_MINUTES)],
         timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
-        default_timezone=DEFAULT_TZ or "UTC", fonts=FONTS,
+        default_timezone=DEFAULT_TZ or "UTC", fonts=FONTS, version=VERSION,
         ics_local=local, ics_pub=pub, tunnel=_tunnel, public_port=PUBLIC_PORT,
     )
 

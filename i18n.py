@@ -140,6 +140,14 @@ GERMAN = {
         "Die Startseite hat keinen eigenen Login. Schütze den Hostnamen mit einer Cloudflare-Access-Richtlinie, wenn du sie freigibst.",
     "In Cloudflare, set the public hostname to the service HTTP and localhost:{port}.":
         "Stelle in Cloudflare beim öffentlichen Hostnamen den Dienst HTTP und localhost:{port} ein.",
+    # Settings: about
+    "Project website": "Projektseite",
+    "Report a problem": "Problem melden",
+    "Releases": "Versionen",
+    "Made with": "Entwickelt mit",
+    "by": "von",
+    "Design inspired by": "Design inspiriert von",
+    "Support Daytree": "Daytree unterstützen",
     # Messages
     "Enter e-mail and password.": "Gib E-Mail und Passwort ein.",
     "Login failed: {error}": "Anmeldung fehlgeschlagen: {error}",

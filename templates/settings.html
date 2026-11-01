@@ -262,6 +262,25 @@
     <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
   </section>
 
+  <footer class="about">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Daytree" width="56" height="56">
+    <div class="links">
+      <a href="https://github.com/storkakos/daytree" target="_blank" rel="noopener" aria-label="{{ _("Project website") }}" title="{{ _("Project website") }}">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.580 0 0 3.580 0 8c0 3.540 2.290 6.530 5.470 7.590.4.070.55-.170.55-.380 0-.190-.010-.820-.010-1.490-2.010.370-2.530-.490-2.690-.940-.090-.230-.480-.940-.820-1.130-.280-.150-.680-.520-.010-.530.630-.010 1.080.580 1.230.820.720 1.210 1.870.870 2.330.660.070-.520.280-.870.510-1.070-1.780-.200-3.640-.890-3.640-3.950 0-.870.310-1.590.820-2.150-.080-.200-.360-1.020.080-2.120 0 0 .670-.210 2.200.820.640-.180 1.320-.270 2-.270s1.360.090 2 .270c1.530-1.040 2.200-.820 2.200-.820.440 1.100.160 1.920.080 2.120.510.560.820 1.270.820 2.150 0 3.070-1.870 3.750-3.650 3.950.290.250.540.730.540 1.480 0 1.070-.010 1.930-.010 2.200 0 .210.150.460.550.380A8.010 8.010 0 0 0 16 8c0-4.420-3.580-8-8-8z"/></svg>
+      </a>
+      <a href="https://github.com/storkakos/daytree/issues" target="_blank" rel="noopener" aria-label="{{ _("Report a problem") }}" title="{{ _("Report a problem") }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 17h.01"/></svg>
+      </a>
+      <a href="https://github.com/storkakos/daytree/releases" target="_blank" rel="noopener" aria-label="{{ _("Releases") }}" title="{{ _("Releases") }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.600 13.400 13.400 20.600a2 2 0 0 1-2.800 0L3 13V3h10l7.600 7.600a2 2 0 0 1 0 2.800z"/><path d="M7.500 7.500h.01"/></svg>
+      </a>
+    </div>
+    <p>{{ _("Made with") }} <span class="heart">♥</span> {{ _("by") }} <a href="https://github.com/storkakos" target="_blank" rel="noopener">storkakos</a></p>
+    <p>{{ _("Design inspired by") }} <a href="https://github.com/victrme/Bonjourr" target="_blank" rel="noopener">Bonjourr</a></p>
+    <a class="support" href="https://github.com/storkakos/daytree" target="_blank" rel="noopener"><span class="heart">♡</span> {{ _("Support Daytree") }}</a>
+    <a class="version" href="https://github.com/storkakos/daytree/blob/main/CHANGELOG.md" target="_blank" rel="noopener">{{ version }}</a>
+  </footer>
+
 <script>
   document.querySelector('form[action$="/settings/tunnel"]').id = 'tunnel-form';
   const notify = message => { if (top !== self) parent.postMessage(message, location.origin); };
