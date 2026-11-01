@@ -62,6 +62,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
 - **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
 - **Privacy:** credentials, tokens and tasks are stored encrypted. No database, no cloud service of ours.
+- **Waste collection:** upload an ICS file and see colored bins for the next 7 days.
 - **Fixed screens:** `/kiosk` shows the homepage read-only and updates itself after changes.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
@@ -253,7 +254,7 @@ Versions follow [Semantic Versioning](https://semver.org/). To release, record t
 ## Credits
 
 - [eoleedi/TimeTree-Exporter](https://github.com/eoleedi/TimeTree-Exporter) (MIT): the TimeTree connection.
-- [Bonjourr](https://github.com/victrme/Bonjourr) (GPL-3.0): the design inspiration for the homepage and settings, and the settings icon.
+- [Bonjourr](https://github.com/victrme/Bonjourr) (GPL-3.0): the design inspiration for the homepage and settings, the settings icon and the weather icons.
 - [cloudflare/cloudflared](https://github.com/cloudflare/cloudflared): the tunnel client.
 - [Open-Meteo](https://open-meteo.com/) (CC BY 4.0): weather data.
 - [Lorem Picsum](https://picsum.photos/): background photos.
