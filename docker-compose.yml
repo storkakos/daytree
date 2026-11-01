@@ -1,0 +1,19 @@
+services:
+  timetree-ics:
+    build: .
+    container_name: timetree-ics
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"        # dashboard (use on the home network only)
+      # Port 8081 is intentionally NOT published: the built-in Cloudflare tunnel reaches it internally.
+    environment:
+      TZ: ${TZ:-Europe/Berlin}      # time zone name, e.g. Europe/London
+      # No credentials here: everything is entered in the dashboard under "Settings"
+      # and stored encrypted in /data/settings.enc.
+    volumes:
+      - timetree-data:/data         # encrypted settings, ICS file, sync state
+      - timetree-secrets:/secrets   # encryption key file - kept apart from the data (do not back up together)
+
+volumes:
+  timetree-data:
+  timetree-secrets:

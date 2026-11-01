@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% block head %}{% endblock %}
+<title>TimeTree → ICS</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d21; --muted:#6b7280; --ok:#16a34a; --err:#dc2626; --accent:#2563eb; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1f26; --fg:#e8eaed; --muted:#9aa3ad; --line:#2a313a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  nav { display:flex; gap:4px; align-items:center; margin:8px 0 16px; }
+  nav h1 { font-size:20px; margin:0 auto 0 0; }
+  nav a { color:var(--fg); text-decoration:none; padding:6px 12px; border-radius:8px; }
+  nav a.active { background:var(--accent); color:#fff; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .ok { background:var(--ok); } .err { background:var(--err); } .na { background:var(--muted); }
+  .muted { color:var(--muted); font-size:13px; }
+  .msg { padding:10px 14px; border-radius:8px; margin-bottom:12px; color:#fff; }
+  .msg.ok { background:var(--ok); } .msg.err { background:var(--err); }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  button[disabled] { opacity:.5; }
+  label { display:block; margin:10px 0 4px; font-size:13px; color:var(--muted); }
+  input, select { width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; }
+  input.mono { font:13px monospace; }
+  input[type=checkbox] { width:auto; margin-right:6px; }
+  .check { display:flex; align-items:center; margin:10px 0; color:var(--fg); font-size:14px; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { padding:8px 0; border-top:1px solid var(--line); display:flex; gap:12px; }
+  li:first-child { border-top:0; }
+  .when { min-width:110px; color:var(--muted); }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .warn { border-left:4px solid var(--err); padding:8px 12px; margin:10px 0; font-size:13px; background:var(--bg); border-radius:0 8px 8px 0; }
+  .opt { display:flex; gap:8px; align-items:flex-start; margin:8px 0; font-size:14px; }
+  .opt input { width:auto; margin-top:4px; }
+  code { font:12px monospace; background:var(--bg); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <nav>
+    <h1>TimeTree → ICS</h1>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>
+    {% if not public %}<a href="{{ url_for('settings_page') }}" class="{{ 'active' if active == 'settings' }}">Settings</a>{% endif %}
+  </nav>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in messages %}<div class="msg {{ cat }}">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

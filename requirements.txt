@@ -1,0 +1,6 @@
+timetree-exporter==1.0.0
+flask>=3.0
+gunicorn>=22.0
+icalendar>=6.1.0,<8.0.0
+recurring-ical-events>=3.8,<4
+cryptography>=42

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set active = 'settings' %}
+{% block content %}
+  <form method="post" action="{{ url_for('settings_login') }}" class="card">
+    <h2>1. TimeTree account</h2>
+    <div class="muted">A TimeTree account with e-mail and password is required (social-only logins have no password). Credentials are stored encrypted.</div>
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required>
+    <label for="password">Password {% if s.has_password %}(stored – leave empty to keep it){% endif %}</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" {{ '' if s.has_password else 'required' }}>
+    <p><button type="submit">Sign in &amp; load calendars</button></p>
+  </form>
+
+  <form method="post" action="{{ url_for('settings_save') }}" class="card">
+    <h2>2. Calendar &amp; sync</h2>
+    <label for="calendar_code">Calendar</label>
+    {% if s.calendars %}
+      <select id="calendar_code" name="calendar_code">
+        {% for c in s.calendars %}
+          <option value="{{ c.code }}" {{ 'selected' if c.code == s.calendar_code }}>{{ c.name }} ({{ c.code }})</option>
+        {% endfor %}
+      </select>
+    {% else %}
+      <div class="muted">Sign in above first, then the calendar list appears here.</div>
+    {% endif %}
+
+    <label for="interval">Sync interval</label>
+    <select id="interval" name="interval">
+      {% for minutes, label in intervals %}
+        <option value="{{ minutes }}" {{ 'selected' if minutes == s.interval_minutes }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <div class="muted">Very short intervals may get you rate-limited by TimeTree.</div>
+
+    <label>ICS URL (internal)</label>
+    <input class="mono" readonly value="{{ ics_local }}" onclick="this.select()">
+    {% if ics_pub %}
+      <label>ICS URL (public)</label>
+      <input class="mono" readonly value="{{ ics_pub }}" onclick="this.select()">
+    {% endif %}
+    <div class="check"><input id="new_token" type="checkbox" name="new_token" value="1"><label for="new_token" style="margin:0;color:inherit">Generate a new token (the old URL stops working)</label></div>
+    <div class="check"><input id="sync_now" type="checkbox" name="sync_now" value="1"><label for="sync_now" style="margin:0;color:inherit">Sync immediately afterwards</label></div>
+    <p><button type="submit">Save</button></p>
+  </form>
+
+  <form method="post" action="{{ url_for('settings_tunnel') }}" class="card">
+    <h2>3. Sharing via Cloudflare tunnel</h2>
+    <div class="muted">
+      Status: <strong>{{ tunnel.status }}</strong>{% if tunnel.error %} · {{ tunnel.error }}{% endif %}
+    </div>
+
+    <label for="tunnel_token">Tunnel token {% if s.has_tunnel_token %}(stored – leave empty to keep it){% endif %}</label>
+    <input id="tunnel_token" name="tunnel_token" type="password" autocomplete="off" placeholder="eyJ…">
+    {% if s.has_tunnel_token %}
+      <div class="check"><input id="clear_token" type="checkbox" name="clear_token" value="1"><label for="clear_token" style="margin:0;color:inherit">Delete the stored token</label></div>
+    {% endif %}
+    <div class="check"><input id="tunnel_enabled" type="checkbox" name="tunnel_enabled" value="1" {{ 'checked' if s.tunnel_enabled }}><label for="tunnel_enabled" style="margin:0;color:inherit">Tunnel enabled</label></div>
+
+    <label>What should be reachable through the tunnel?</label>
+    <label class="opt"><input type="radio" name="public_mode" value="off" {{ 'checked' if s.public_mode == 'off' }}><span><strong>Nothing</strong><br><span class="muted">Public requests are rejected, except the <code>/ping</code> health check.</span></span></label>
+    <label class="opt"><input type="radio" name="public_mode" value="ics" {{ 'checked' if s.public_mode == 'ics' }}><span><strong>ICS file only</strong><br><span class="muted">Only <code>/calendar.ics?token=…</code> and the <code>/ping</code> health check – everything else returns 404.</span></span></label>
+    <label class="opt"><input type="radio" name="public_mode" value="dashboard" {{ 'checked' if s.public_mode == 'dashboard' }}><span><strong>Dashboard (read-only) + ICS</strong><br><span class="muted">Status and events are visible; settings and sync stay reachable internally only.</span></span></label>
+    <div class="warn">The dashboard has no login of its own. If you expose it, additionally protect the hostname with a Cloudflare Zero Trust <strong>Access policy</strong>.</div>
+
+    <label for="public_hostname">Public hostname (only used to display the ICS URL)</label>
+    <input id="public_hostname" name="public_hostname" value="{{ s.public_hostname }}" placeholder="calendar.example.com">
+
+    <div class="muted" style="margin-top:10px">
+      In Cloudflare under <em>Zero Trust → Networks → Tunnels → Public Hostname</em> set the service to
+      <code>HTTP</code> · <code>localhost:{{ public_port }}</code>. That port enforces the mode selected above.
+    </div>
+    <p><button type="submit">Save</button></p>
+  </form>
+{% endblock %}
