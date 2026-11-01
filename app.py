@@ -567,6 +567,7 @@ def display_config():
         "fontSize": settings["font_size"],
         "fontWeight": settings["font_weight"],
         "text": {t: _(t) for t in display_config_strings()},
+        "version": VERSION,
     }
 
 
@@ -574,7 +575,16 @@ def display_config():
 def dashboard():
     return render_template(
         "kiosk.html", s=view(), setup=needs_setup() and not is_public(), default_minutes=DEFAULTS["interval_minutes"],
-        show_tasks=settings["tasks_enabled"] and not is_public(), config=display_config(),
+        show_tasks=settings["tasks_enabled"] and not is_public(), config=display_config(), read_only=is_public(),
+    )
+
+
+@app.get("/kiosk")
+def kiosk():
+    """The homepage for a fixed screen: tasks can be read but not changed, and there is no way into the settings."""
+    return render_template(
+        "kiosk.html", s=view(), setup=False, show_tasks=settings["tasks_enabled"] and not is_public(),
+        config=display_config(), read_only=True,
     )
 
 
