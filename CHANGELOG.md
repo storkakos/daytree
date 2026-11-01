@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Encrypted task storage, with a setting to show or hide tasks on the homepage.
 - German user interface, with automatic language detection and a language setting.
 - Settings for the time zone, 12 or 24 hour clock and date style.
-- Favicon and home screen icon.
+- Daytree logo, favicon and home screen icon.
 - Photo or color backgrounds with blur and brightness settings. Photos come from Lorem Picsum.
 - Colored bullets on the homepage that match the TimeTree event colors.
 - Greeting with your name, and current weather from Open-Meteo.

@@ -1,66 +1,74 @@
 <div align="center">
 
+<img src="static/logo.png" alt="Daytree logo" width="128">
+
 # Daytree
 
-**Your TimeTree calendar on any screen, and in Outlook, Google Calendar and Apple Calendar.**
+**Your family's day at a glance, on any screen.**
 
-A self-hosted wall display for TVs, monitors and tablets, with tasks, weather and photo backgrounds.<br>
-It also publishes your TimeTree calendar as a private ICS feed.
+A self-hosted home calendar app for TVs, monitors and tablets, powered by your TimeTree calendar.<br>
+With tasks, reminders, weather and beautiful photo backgrounds.
 
 [![Release](https://img.shields.io/github/v/release/storkakos/daytree?include_prereleases&label=Release)](https://github.com/storkakos/daytree/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare-Tunnel-F38020?logo=cloudflare&logoColor=white)](#sharing-through-a-cloudflare-tunnel)
 
 [Features](#features) ·
 [Quick start](#quick-start) ·
-[Subscribing](#subscribing-to-the-calendar) ·
-[Tunnel](#sharing-through-a-cloudflare-tunnel) ·
-[Configuration](#configuration) ·
-[Security](#security-model)
+[Wall display](#setting-up-a-wall-display) ·
+[Calendar apps](#subscribing-from-calendar-apps) ·
+[Remote access](#remote-access-with-cloudflare) ·
+[Security](#security)
+
+<br>
+
+<img src="docs/homepage-landscape.jpg" alt="Daytree homepage with today's agenda, the next 7 days and tasks on a photo background" width="100%">
 
 </div>
 
----
+> [!NOTE]
+> Daytree is in beta. It uses an unofficial TimeTree web API, which can change without notice.
+
+## Why Daytree?
+
+TimeTree is a great shared calendar, but it lives on your phone. Daytree puts it on the wall: a calm, always-on
+display that shows the whole household what is happening today and this week. It runs on your own server, needs no
+extra account, and also keeps your calendar in sync with Outlook and Google Calendar.
 
 ## Features
 
-| | |
-|---|---|
-| **Scheduled export** | Syncs one TimeTree calendar every 0.5 to 24 hours (default: 3 hours). |
-| **Private ICS feed** | Serves the calendar under a secret token URL. The token can be replaced at any time. |
-| **Kiosk homepage** | Shows the clock, today's agenda, the next 7 days and tasks. Works on TVs, monitors and tablets, in landscape and portrait. |
-| **Photo backgrounds** | Shows changing photos, with blur and brightness controls, or a solid color. |
-| **Greeting and weather** | Greets you by name and shows the current weather for your town, without an API key. |
-| **Event colors** | Shows each event on the homepage with its TimeTree color. |
-| **Reminders** | Shows a reminder 30 minutes before an event starts. |
-| **German and English** | Follows the browser language, or a fixed language from the settings. |
-| **Settings in one place** | Sign-in, calendar selection, sync status, feed token and tunnel are one click away behind the gear icon. |
-| **Cloudflare tunnel** | Optional built-in tunnel that exposes nothing, the ICS feed only, or a read-only dashboard. |
-| **Encrypted settings** | Credentials and tokens are stored encrypted, with the key on a separate volume. |
-| **Standards-compliant output** | Repairs the exporter's all-day dates and time zones, so strict calendar clients accept the feed. |
-| **Uptime monitoring** | A `/ping` endpoint for tools such as Uptime Kuma. |
-| **Small footprint** | Alpine-based image that runs as a non-root user. No database. |
+### For everyday use
 
-## How it works
+- **Today and the next 7 days:** recurring events included, each with its TimeTree color.
+- **Tasks:** add, tick off and delete household tasks directly on a tablet. You can hide them if you don't need them.
+- **Reminders:** a notice appears 30 minutes before an event starts.
+- **Weather and greeting:** current weather for your town and a personal greeting. No API key needed.
+- **Works on any screen:** landscape on a TV, portrait on a monitor or tablet. Panels adapt to their content, so
+  a quiet day leaves more room for the week ahead.
 
-```mermaid
-flowchart LR
-    TT[TimeTree] -->|scheduled export| APP[daytree<br>container]
-    APP --- DATA[(Encrypted settings<br>and ICS file)]
-    APP -->|port 8080| LAN[Kiosk homepage<br>home network]
-    APP -->|port 8081| CF[Cloudflare tunnel]
-    CF --> CAL[Outlook, Google Calendar,<br>uptime monitors]
-```
+### Make it yours
 
-Port 8080 serves the homepage and settings and should stay on your home network. Port 8081 is the public side: the
-application decides what is reachable there, regardless of how the tunnel is configured in Cloudflare.
+Everything is behind the gear icon, saved immediately and shown live:
+
+- **Background:** changing photos or a solid color, with blur and brightness controls.
+- **Clock and date:** digital or analog, 12 or 24 hours, seconds, size, time zone and date style.
+- **Font:** family, size and weight.
+- **Language:** German and English, following your browser or set by you.
+
+### Under the hood
+
+- **Calendar sync:** imports one TimeTree calendar every 0.5 to 24 hours (default: 3 hours).
+- **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
+- **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
+- **Privacy:** credentials, tokens and tasks are stored encrypted. No database, no cloud service of ours.
+- **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
+- **Small footprint:** one Alpine-based container that runs as a non-root user.
 
 ## Quick start
 
-**Requirements:** Docker with Compose, and a TimeTree account with an e-mail address and password. Accounts that
-only sign in through Google or Apple have no password and are not supported.
+**You need:** Docker with Compose, and a TimeTree account with an e-mail address and password. Accounts that only sign
+in through Google or Apple have no password and are not supported.
 
 ```bash
 git clone https://github.com/storkakos/daytree.git
@@ -70,14 +78,24 @@ docker compose up -d --build
 
 Open `http://<host>:8080`. A setup window guides you through the first start:
 
-1. **Sign in:** enter your TimeTree e-mail and password.
-2. **Choose a calendar:** the first sync starts as soon as you finish.
+1. **Sign in** with your TimeTree e-mail and password.
+2. **Choose a calendar.** The first sync starts as soon as you finish.
 
-To subscribe from a calendar app, select the gear icon on the homepage and copy the **ICS URL** from the settings.
+That's it. Select the gear icon in the bottom-right corner to personalize the homepage.
 
-No credentials are placed in `docker-compose.yml` or `.env`.
+## Setting up a wall display
 
-## Subscribing to the calendar
+Daytree needs only a browser on the display device, so an old tablet or a mini PC is enough.
+
+| Device | How to use it |
+|---|---|
+| **TV or monitor with a mini PC** | Open the homepage full screen in a browser, for example with `chromium --kiosk http://<host>:8080`. |
+| **Monitor in portrait** | Rotate the screen in the operating system. The layout follows automatically. |
+| **iPad or Android tablet** | Open the homepage and add it to the home screen. Use the device's single-app mode to keep it on screen. |
+
+## Subscribing from calendar apps
+
+Select the gear icon, copy the **ICS URL** from the **Calendar subscription** section, and add it to your app:
 
 | App | Where to add the URL |
 |---|---|
@@ -86,51 +104,64 @@ No credentials are placed in `docker-compose.yml` or `.env`.
 
 > [!IMPORTANT]
 > Outlook on the web, Microsoft 365 and Google Calendar fetch the feed from their own servers. The URL must be
-> publicly reachable over HTTPS, for example through the [Cloudflare tunnel](#sharing-through-a-cloudflare-tunnel).
+> publicly reachable over HTTPS, for example through [Cloudflare](#remote-access-with-cloudflare).
 
-The sync interval controls how fresh the ICS file is. Your calendar app decides how often it fetches the file,
-which is typically every few hours, so changes can take some time to appear.
+The sync interval controls how fresh the feed is. Your calendar app decides how often it fetches it, typically every
+few hours, so changes can take some time to appear there. The homepage updates after every sync.
 
-## Sharing through a Cloudflare tunnel
+## Remote access with Cloudflare
 
 The tunnel is optional and runs inside the container.
 
 1. In Cloudflare Zero Trust, go to *Networks → Tunnels → Create a tunnel → Cloudflared* and copy the **token**.
    You can also copy the whole install command, and the app extracts the token.
 2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8081`.
-3. In the app, open **Settings → Sharing via Cloudflare tunnel**, paste the token, tick *Tunnel enabled*, choose
-   a mode and enter the public hostname. The hostname is only used to display the public ICS URL.
-
-### Exposure modes
+3. In the settings, under **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
+   hostname. Then choose what is reachable and save.
 
 | Mode | Reachable through the tunnel |
 |---|---|
 | **Nothing** (default) | `/ping` only |
 | **ICS file only** | `/calendar.ics?token=…` and `/ping` |
-| **Dashboard (read-only) + ICS** | The homepage without tasks and settings, the ICS feed and `/ping` |
+| **Homepage (read-only) + ICS** | The homepage without tasks and settings, the ICS feed and `/ping` |
 
-Settings, tasks and **Sync now** are never reachable through the tunnel. The mode is enforced by the application on port 8081, and for any request that carries Cloudflare headers.
+Settings, tasks and **Sync now** are never reachable through the tunnel. The app enforces the mode on port 8081, and
+for any request that carries Cloudflare headers.
 
 > [!WARNING]
-> The dashboard has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
+> The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
 > **Access policy**, or keep it on your home network.
 
-### Using an existing cloudflared
+If `cloudflared` already runs elsewhere, leave the built-in tunnel disabled and point its public hostname at
+`http://daytree:8081` on the same Docker network.
 
-If `cloudflared` already runs elsewhere, for example in Uptime Kuma, leave the built-in tunnel disabled and point
-its public hostname at `http://daytree:8081` on the same Docker network.
-
-## Monitoring
+### Uptime monitoring
 
 Point your monitor at `https://<hostname>/ping`. The endpoint is available in every mode, needs no token and only
-returns `pong`.
+returns `pong`. It shows that the app and the tunnel are up, not whether the last sync succeeded.
 
-> [!NOTE]
-> `/ping` shows that the service and the tunnel are up, not whether the last sync succeeded.
+## How it works
+
+```mermaid
+flowchart LR
+    TT[TimeTree] -->|scheduled sync| APP[Daytree<br>container]
+    APP --- DATA[(Encrypted settings,<br>tasks and ICS file)]
+    APP -->|port 8080| LAN[Homepage and settings<br>home network]
+    APP -->|port 8081| CF[Cloudflare tunnel]
+    CF --> CAL[Outlook, Google Calendar,<br>uptime monitors]
+```
+
+Port 8080 serves the homepage and settings and should stay on your home network. Port 8081 is the public side: the
+app decides what is reachable there, regardless of how the tunnel is configured in Cloudflare.
+
+Daytree calls a few outside services: TimeTree for your calendar, [Open-Meteo](https://open-meteo.com/) for weather if
+you turn it on, and [Lorem Picsum](https://picsum.photos/) for photos. Displays load the photos directly from Lorem
+Picsum, and fonts other than the system font from Google Fonts.
 
 ## Configuration
 
-Host settings go into a `.env` file next to `docker-compose.yml`. Apply changes with `docker compose up -d`:
+Nearly everything is set in the app. Only host settings go into a `.env` file next to `docker-compose.yml`. Apply
+changes with `docker compose up -d`:
 
 ```bash
 PORT=8090
@@ -139,25 +170,19 @@ TZ=Europe/London
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `8080` | Host port of the dashboard. |
-| `TZ` | `Europe/Berlin` | Default time zone for the homepage and settings. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. Event times in the feed are not affected. |
+| `PORT` | `8080` | Host port of the app. |
+| `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
 | `DATA_DIR` | `/data` | Data directory. |
 | `PUBLIC_PORT` | `8081` | Port treated as public, where the tunnel points. |
 | `CLOUDFLARED_TAG` (build argument) | `2026.10.7` | Version of the `cloudflared` image to copy the binary from. |
 
-Language, time and date, greeting, weather, background, font and the tasks panel are set behind the gear icon on the
-homepage. These settings are saved immediately and shown live.
+The host port cannot be changed in the app. Port mappings belong to Docker on the host, and giving the app access to
+the Docker socket would be a security risk. The app keeps using ports 8080 and 8081 inside the container, so a tunnel
+is not affected by a changed host port.
 
-Photos come from [Lorem Picsum](https://picsum.photos/) and weather data from [Open-Meteo](https://open-meteo.com/).
-Neither needs an API key. Fonts other than the system font are loaded from Google Fonts.
-
-The host port cannot be changed in the settings. Port mappings belong to Docker on the host, and giving the app
-access to the Docker socket would be a security risk. The app keeps using ports 8080 and 8081 inside the container,
-so a tunnel is not affected by a changed host port.
-
-## Security model
+## Security
 
 - All settings, including the TimeTree credentials, ICS token and tunnel token, are stored in `/data/settings.enc`,
   encrypted with Fernet (AES-128-CBC with HMAC-SHA256). Tasks are encrypted the same way in `/data/tasks.enc`.
@@ -168,7 +193,7 @@ so a tunnel is not affected by a changed host port.
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
 
-## Data and upgrades
+## Backups and upgrades
 
 | Volume | Mount | Content |
 |---|---|---|
@@ -191,6 +216,14 @@ Installations from before the Daytree rename used volumes named `timetree-ics_ti
 Named volumes let the non-root container user (uid 1000) write. If you switch to bind mounts, run
 `chown 1000:1000` on the host folders.
 
+## Limitations
+
+- TimeTree has no official API for this. Daytree uses an unofficial web API through
+  [`timetree-exporter`](https://github.com/eoleedi/TimeTree-Exporter), which can break or rate-limit without notice.
+- Only one calendar is supported at a time. Multiple calendars are planned.
+- Only accounts with an e-mail address and password are supported.
+- Calendar apps show a subscribed calendar in one color. Event colors appear only on the Daytree homepage.
+
 ## Development
 
 ```bash
@@ -208,29 +241,19 @@ docker exec -i daytree python - < tests/port_check.py
 Both print `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.
 
-### Branches and releases
-
 | Branch | Purpose |
 |---|---|
 | `main` | Released versions only. Every release is a tagged commit. |
 | `dev` | Integration branch. All work starts here, and pull requests target it. |
 
 Versions follow [Semantic Versioning](https://semver.org/). To release, record the changes in
-[`CHANGELOG.md`](CHANGELOG.md), merge `dev` into `main` with a pull request, and tag the result, for example `v0.9.1`.
-
-## Limitations
-
-- TimeTree has no official API for this. The service uses an unofficial web API through
-  [`timetree-exporter`](https://github.com/eoleedi/TimeTree-Exporter), which can break or rate-limit without notice.
-- Only one calendar is exported at a time.
-- Only accounts with an e-mail address and password are supported.
-- A subscribed calendar shows all events in one color. The ICS feed does not contain TimeTree colors, only the homepage does.
+[`CHANGELOG.md`](CHANGELOG.md), merge `dev` into `main` with a pull request, and tag the result.
 
 ## Credits
 
-- [eoleedi/TimeTree-Exporter](https://github.com/eoleedi/TimeTree-Exporter) (MIT): the exporter used under the hood.
+- [eoleedi/TimeTree-Exporter](https://github.com/eoleedi/TimeTree-Exporter) (MIT): the TimeTree connection.
+- [Bonjourr](https://github.com/victrme/Bonjourr) (GPL-3.0): the design inspiration for the homepage and settings, and the settings icon.
 - [cloudflare/cloudflared](https://github.com/cloudflare/cloudflared): the tunnel client.
-- [Bonjourr](https://github.com/victrme/Bonjourr) (GPL-3.0): the design inspiration for the homepage and its settings, and the settings icon.
 - [Open-Meteo](https://open-meteo.com/) (CC BY 4.0): weather data.
 - [Lorem Picsum](https://picsum.photos/): background photos.
 - Inspired by [gottfried1980/timetable-docker](https://github.com/gottfried1980/timetable-docker) and
@@ -240,4 +263,4 @@ Versions follow [Semantic Versioning](https://semver.org/). To release, record t
 
 Released under the [GNU General Public License v3.0](LICENSE). Version 0.9.0 was released under the MIT License.
 
-TimeTree is a trademark of its owner. This project is not affiliated with or endorsed by TimeTree, Inc.
+TimeTree is a trademark of its owner. Daytree is not affiliated with or endorsed by TimeTree, Inc.
