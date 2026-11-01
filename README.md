@@ -6,8 +6,8 @@
 
 **Your family's day at a glance, on any screen.**
 
-A self-hosted home calendar app for TVs, monitors and tablets, powered by your TimeTree calendar.<br>
-With tasks, reminders, weather and beautiful photo backgrounds.
+A self-hosted home calendar app for TVs, monitors, tablets and phones, powered by your TimeTree calendar.<br>
+With tasks, reminders, a weather forecast, waste collection and beautiful photo backgrounds.
 
 [![Release](https://img.shields.io/github/v/release/storkakos/daytree?include_prereleases&label=Release)](https://github.com/storkakos/daytree/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -44,14 +44,17 @@ extra account, and also keeps your calendar in sync with Outlook and Google Cale
 - **Tasks:** add, tick off and delete household tasks directly on a tablet. You can hide them if you don't need them.
 - **Reminders:** a notice appears 30 minutes before an event starts.
 - **Weather and greeting:** current weather for your town and a personal greeting. No API key needed.
-- **Works on any screen:** landscape on a TV, portrait on a monitor or tablet. Panels adapt to their content, so
-  a quiet day leaves more room for the week ahead.
+- **Weather forecast:** the next 10 hours or 7 days, with day and night icons.
+- **Waste collection:** upload an ICS file, pick a color per collection and see small bins for the next 7 days.
+- **Works on any screen:** landscape on a TV, portrait on a monitor or tablet, and a scrolling layout on phones.
+  Panels adapt to their content, so a quiet day leaves more room for the week ahead.
+- **Always up to date:** an open page picks up changed settings and app updates by itself.
 
 ### Make it yours
 
 Everything is behind the gear icon, saved immediately and shown live:
 
-- **Background:** changing photos or a solid color, with blur and brightness controls.
+- **Background:** changing photos or a solid color, with your own interval in minutes, blur and brightness controls.
 - **Clock and date:** digital or analog, 12 or 24 hours, seconds, size, time zone and date style.
 - **Font:** family, size and weight.
 - **Language:** German and English, following your browser or set by you.
@@ -61,9 +64,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Calendar sync:** imports one TimeTree calendar every 0.5 to 24 hours (default: 3 hours).
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
 - **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
-- **Privacy:** credentials, tokens and tasks are stored encrypted. No database, no cloud service of ours.
-- **Waste collection:** upload an ICS file and see colored bins for the next 7 days.
-- **Fixed screens:** `/kiosk` shows the homepage read-only and updates itself after changes.
+- **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
@@ -83,15 +84,20 @@ Open `http://<host>:8080`. A setup window guides you through the first start:
 1. **Sign in** with your TimeTree e-mail and password.
 2. **Choose a calendar.** The first sync starts as soon as you finish.
 
-That's it. Select the gear icon in the bottom-right corner to personalize the homepage.
+That's it. Move the mouse to the top-right corner and select the gear icon to personalize the homepage. On touch
+screens the icon stays visible.
 
 ## Setting up a wall display
 
-Daytree needs only a browser on the display device, so an old tablet or a mini PC is enough.
+Daytree needs only a browser on the display device, so an old tablet or a mini PC is enough. Browsers from
+Chromium 56 onwards work.
+
+Use `http://<host>:8080/kiosk` for a screen nobody should change. It shows the same homepage with read-only tasks
+and no way into the settings. This only limits what the page offers: port 8080 stays fully usable on your network.
 
 | Device | How to use it |
 |---|---|
-| **TV or monitor with a mini PC** | Open the homepage full screen in a browser, for example with `chromium --kiosk http://<host>:8080`. |
+| **TV or monitor with a mini PC** | Open the homepage full screen in a browser, for example with `chromium --kiosk http://<host>:8080/kiosk`. |
 | **Monitor in portrait** | Rotate the screen in the operating system. The layout follows automatically. |
 | **iPad or Android tablet** | Open the homepage and add it to the home screen. Use the device's single-app mode to keep it on screen. |
 

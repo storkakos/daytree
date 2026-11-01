@@ -248,6 +248,7 @@ real TimeTree/Cloudflare credentials**.
 - When you finish a task, run `tests/smoke_test.py`.
 - Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
   and very large changes the first number (`+.x.x`).
+- Always check `README.md` after a change and update it when it no longer matches the app.
 
 ---
 
