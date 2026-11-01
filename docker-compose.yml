@@ -1,7 +1,9 @@
+name: daytree
+
 services:
-  timetree-ics:
+  daytree:
     build: .
-    container_name: timetree-ics
+    container_name: daytree
     restart: unless-stopped
     ports:
       - "${PORT:-8080}:8080"        # dashboard (use on the home network only)
@@ -11,9 +13,9 @@ services:
       # No credentials here: everything is entered in the dashboard under "Settings"
       # and stored encrypted in /data/settings.enc.
     volumes:
-      - timetree-data:/data         # encrypted settings, ICS file, sync state
-      - timetree-secrets:/secrets   # encryption key file - kept apart from the data (do not back up together)
+      - daytree-data:/data         # encrypted settings, ICS file, sync state
+      - daytree-secrets:/secrets   # encryption key file - kept apart from the data (do not back up together)
 
 volumes:
-  timetree-data:
-  timetree-secrets:
+  daytree-data:
+  daytree-secrets:

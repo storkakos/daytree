@@ -1,13 +1,13 @@
 <div align="center">
 
-# TimeTree ICS
+# Daytree
 
-**Subscribe to your TimeTree calendar in Outlook, Google Calendar and Apple Calendar.**
+**Your TimeTree calendar on any screen, and in Outlook, Google Calendar and Apple Calendar.**
 
-A self-hosted Docker service that exports a TimeTree calendar on a schedule and publishes it<br>
-as a private ICS feed, managed from a web dashboard.
+A self-hosted wall display for TVs, monitors and tablets, with tasks, weather and photo backgrounds.<br>
+It also publishes your TimeTree calendar as a private ICS feed.
 
-[![Release](https://img.shields.io/github/v/release/storkakos/timetree-ics?include_prereleases&label=Release)](https://github.com/storkakos/timetree-ics/releases)
+[![Release](https://img.shields.io/github/v/release/storkakos/daytree?include_prereleases&label=Release)](https://github.com/storkakos/daytree/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
@@ -47,7 +47,7 @@ as a private ICS feed, managed from a web dashboard.
 
 ```mermaid
 flowchart LR
-    TT[TimeTree] -->|scheduled export| APP[timetree-ics<br>container]
+    TT[TimeTree] -->|scheduled export| APP[daytree<br>container]
     APP --- DATA[(Encrypted settings<br>and ICS file)]
     APP -->|port 8080| LAN[Kiosk homepage<br>home network]
     APP -->|port 8081| CF[Cloudflare tunnel]
@@ -63,8 +63,8 @@ application decides what is reachable there, regardless of how the tunnel is con
 only sign in through Google or Apple have no password and are not supported.
 
 ```bash
-git clone https://github.com/storkakos/timetree-ics.git
-cd timetree-ics
+git clone https://github.com/storkakos/daytree.git
+cd daytree
 docker compose up -d --build
 ```
 
@@ -118,7 +118,7 @@ Settings, tasks and **Sync now** are never reachable through the tunnel. The mod
 ### Using an existing cloudflared
 
 If `cloudflared` already runs elsewhere, for example in Uptime Kuma, leave the built-in tunnel disabled and point
-its public hostname at `http://timetree-ics:8081` on the same Docker network.
+its public hostname at `http://daytree:8081` on the same Docker network.
 
 ## Monitoring
 
@@ -172,8 +172,8 @@ so a tunnel is not affected by a changed host port.
 
 | Volume | Mount | Content |
 |---|---|---|
-| `timetree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
-| `timetree-secrets` | `/secrets` | `secret.key` |
+| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
+| `daytree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
 
@@ -184,6 +184,10 @@ git pull
 docker compose up -d --build
 ```
 
+Installations from before the Daytree rename used volumes named `timetree-ics_timetree-data` and
+`timetree-ics_timetree-secrets`. Stop the old container and copy both volumes to `daytree_daytree-data` and
+`daytree_daytree-secrets` before you start the new one.
+
 Named volumes let the non-root container user (uid 1000) write. If you switch to bind mounts, run
 `chown 1000:1000` on the host folders.
 
@@ -193,7 +197,7 @@ Named volumes let the non-root container user (uid 1000) write. If you switch to
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 python tests/smoke_test.py
-docker exec -i timetree-ics python - < tests/port_check.py
+docker exec -i daytree python - < tests/port_check.py
 ```
 
 | Test | Requirements | Covers |

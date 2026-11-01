@@ -53,7 +53,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 |---|---|
 | **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. **Do not add app-level auth unless the user asks.** |
 | All UI strings/docs in **English**. | "Everything must be in English." German i18n is an optional future feature, not required. |
-| Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://timetree-ics:8081`. |
+| Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
 | Exposure mode (**off / ICS only / dashboard read-only**) is **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
 | One container, Flask, **no database**. | Keep it slim. State = one encrypted settings file + one ICS file + a small status JSON. |
 
@@ -78,7 +78,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `templates/kiosk.html` | Homepage: agenda, week, tasks, reminders and setup popup. Vanilla JS, responsive for landscape and portrait. |
 | `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
-| `docker-compose.yml` | One service; **named volumes** `timetree-data` (`/data`) and `timetree-secrets` (`/secrets`). Only port 8080 is published. |
+| `docker-compose.yml` | One service; **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.txt` | `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `i18n.py` | German translations. English strings are the keys. |
 | `static/` | Favicon and home screen icon. |
