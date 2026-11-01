@@ -250,6 +250,11 @@ assert tok.encode() in c.get("/settings").data                           # inter
 assert c.get("/api/events", **PUB).status_code == 200
 A.settings["greeting_name"] = "Private Name"
 assert c.get("/api/config", **PUB).get_json()["name"] == "" and b"Private Name" not in c.get("/", **PUB).data
+page = c.get("/kiosk").data
+assert b"Private Name" in page and b'id="gear"' not in page and b'id="panel"' not in page
+assert b'id="tasks"' in page and b'id="task-form"' not in page and b"box.disabled = true" in page
+public_page = c.get("/kiosk", **PUB).data
+assert b"Private Name" not in public_page and b'id="tasks"' not in public_page
 A.settings["greeting_name"] = ""
 assert c.post("/api/background/refresh", headers=H, **PUB).status_code == 404
 assert c.get("/api/tasks", **PUB).status_code == 404

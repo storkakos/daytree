@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - The homepage takes over settings changed on another device within 30 seconds and reloads itself after an app update.
+- `/kiosk` shows the homepage for a fixed screen: tasks are read-only and there is no access to the settings.
 
 ### Fixed
 
