@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Encrypted task storage, with a setting to show or hide tasks on the homepage.
 - German user interface, with automatic language detection and a language setting.
 - Settings for the time zone, 12 or 24 hour clock and date style.
-- Favicon and home screen icon.
+- Daytree logo, favicon and home screen icon.
 - Photo or color backgrounds with blur and brightness settings. Photos come from Lorem Picsum.
 - Colored bullets on the homepage that match the TimeTree event colors.
 - Greeting with your name, and current weather from Open-Meteo.
@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- The project is now called Daytree. The Compose project, container and volumes were renamed; see the README to
+  keep your data when you upgrade.
 - The sync status and **Sync now** moved to the settings page, opened with the gear icon on the homepage.
 - The read-only public dashboard is now the kiosk view without tasks and settings.
 - The CSRF check now covers all state-changing requests.
@@ -55,5 +57,5 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/timetree-ics/compare/v0.9.0...dev
-[0.9.0]: https://github.com/storkakos/timetree-ics/releases/tag/v0.9.0
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.9.0...dev
+[0.9.0]: https://github.com/storkakos/daytree/releases/tag/v0.9.0
