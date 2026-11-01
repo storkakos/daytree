@@ -7,13 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Weather icons come from Bonjourr, look the same in every browser and have night versions.
+- The photo credit moved to the top left. The settings icon moved to the top right and appears on mouse hover.
+
 ### Added
 
 - The homepage takes over settings changed on another device within 30 seconds and reloads itself after an app update.
 - `/kiosk` shows the homepage for a fixed screen: tasks are read-only and there is no access to the settings.
+- A waste collection calendar: upload an ICS file, pick a color per collection and see small bins for the next 7 days.
+- The background photo can change after a custom number of minutes.
+- A weather forecast above the day view, for the next 10 hours or 7 days. Choose it under Settings → Weather.
 
 ### Fixed
 
+- The background photo no longer changes when the app restarts, and a new change interval applies to the current photo.
 - The homepage stayed empty on older browsers (Chromium 56 and similar).
   Homepage and settings no longer depend on newer JavaScript and CSS features.
 
