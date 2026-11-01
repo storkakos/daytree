@@ -80,6 +80,8 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service; **named volumes** `timetree-data` (`/data`) and `timetree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.txt` | `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
+| `i18n.py` | German translations. English strings are the keys. |
+| `static/` | Favicon and home screen icon. |
 | `tests/smoke_test.py` | End-to-end logic test (no network/Docker). Prints `ALL OK`. Needs Linux (file modes, fake `cloudflared`). |
 | `tests/port_check.py` | Checks internal/public port detection against the running container. Prints `ALL OK`. |
 | `.env.example` | Only `PORT` and an optional `SECRET_KEY`. **No credentials belong in env files.** |
@@ -88,10 +90,11 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 | File | Content | Protection |
 |---|---|---|
-| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname. | Encrypted, mode 600 |
+| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
 | `/data/timetree.ics` | Latest successful export. Replaced atomically only on success. | **Not encrypted** (it must be served; contains event titles) |
+| `/data/event_colors.json` | Event UID to TimeTree color, for the homepage bullets. `fix_ics()` removes COLOR from the published feed. | Plain, contains no secrets |
 | `/data/state.json` | Last run / success time, event count, last message. | Plain, contains no secrets |
 
 Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated to `settings.enc` and deleted on startup.
@@ -103,6 +106,8 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 | `GET /` kiosk homepage with first-time setup popup | yes | only in mode `dashboard` (read-only view: no settings gear, no tasks, no setup popup) |
 | `GET /api/events` | yes | only in mode `dashboard` |
 | `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
+| `GET /api/config`, `/api/background`, `/api/weather` | yes | only in mode `dashboard` (the greeting name is removed) |
+| `POST /api/background/refresh` | yes | never |
 | `POST /sync` | yes | never |
 | `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/tunnel` | yes | never |
 | `GET /api/status` | yes | only in mode `dashboard` |
@@ -228,11 +233,15 @@ real TimeTree/Cloudflare credentials**.
 
 ## 6. Rules for working in this repo
 
-- **English only** — code, comments, UI, docs, commit messages.
+- **English only** — code, comments, docs, commit messages. UI strings are written in English and translated in
+  `i18n.py`; every string needs a German entry (checked by the smoke test).
 - Never introduce plaintext secret storage, never log secrets, never put secrets in argv, env files,
   compose files, templates or test fixtures. Redact tokens in any error output you add.
 - Do not publish port 8081 in `docker-compose.yml`.
 - Do not add a login/auth system, a database, or a JS framework without the owner's explicit request.
+- The project is GPL-3.0 since the release after 0.9.0. Code from Bonjourr (GPL-3.0) may be reused with credit.
+- Background and weather lookups are the only outgoing calls besides TimeTree. They must fail quietly and never
+  use Bonjourr's own backend.
 - Keep dependencies minimal; every new package must be justified (image size).
 - Do not change the exposure-mode semantics without updating the UI text, README, the smoke test and this file.
 - Keep the single-worker constraint.
@@ -243,7 +252,8 @@ real TimeTree/Cloudflare credentials**.
 ## 7. Open questions for the owner (do not decide these yourself)
 
 Decided by the owner: the homepage is a TV/kiosk view for landscape and portrait screens, without an
-Austrian or regional calendar, photos or music. A German UI (i18n) is wanted and not implemented yet.
+Austrian or regional calendar, photos or music. Multiple calendars are planned for later: one ICS token per
+calendar, and a choice of which calendars appear on the homepage.
 
 1. Should Settings ever be reachable through the tunnel (currently never; internal only)?
 

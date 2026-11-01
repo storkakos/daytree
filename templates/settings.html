@@ -1,93 +1,305 @@
 {% extends "base.html" %}
-{% set active = 'settings' %}
 {% block content %}
-  <div class="card">
-    <div class="row">
-      <div>
-        <span class="dot {{ 'ok' if state.ok else ('err' if state.ok is false else 'na') }}"></span>
-        <strong>{{ 'Last sync succeeded' if state.ok else ('Last sync failed' if state.ok is false else 'No sync yet') }}</strong>
-        <div class="muted">
-          {% if s.calendar_name %}Calendar: {{ s.calendar_name }} · {% endif %}
-          {% if state.last_success %}Success: {{ state.last_success[:19].replace('T',' ') }} UTC · {% endif %}
-          {{ state.events }} events
-        </div>
-        <div class="muted">Every {{ s.interval_label }}{% if next_run %} · next sync about {{ next_run }}{% endif %}</div>
-        {% if state.ok is false %}<div class="muted">{{ state.message }}</div>{% endif %}
+  <section class="group">
+    <h2>{{ _("Status") }}</h2>
+    <div class="card">
+      <div class="row">
+        <div><span class="dot {{ 'ok' if state.ok else ('err' if state.ok is false else 'na') }}"></span>{{ _("Last sync succeeded") if state.ok else (_("Last sync failed") if state.ok is false else _("No sync yet")) }}</div>
       </div>
+      {% if state.ok is false %}<div class="row"><div class="value">{{ _(state.message) }}</div></div>{% endif %}
+      {% if s.calendar_name %}<div class="row"><span class="label">{{ _("Calendar") }}</span><span class="value">{{ s.calendar_name }}</span></div>{% endif %}
+      {% if state.last_success %}<div class="row"><span class="label">{{ _("Last success") }}</span><span class="value">{{ state.last_success[:16].replace('T',' ') }} UTC</span></div>{% endif %}
+      <div class="row"><span class="label">{{ _("Events") }}</span><span class="value">{{ state.events }}</span></div>
+      <div class="row"><span class="label">{{ _("Next sync") }}</span><span class="value">{{ _("Every {interval}").format(interval=s.interval_label) }}{% if next_run %} · {{ next_run }}{% endif %}</span></div>
       <form method="post" action="{{ url_for('sync_now') }}">
-        <button {{ 'disabled' if running }}>{{ 'Running …' if running else 'Sync now' }}</button>
+        <button class="action" {{ 'disabled' if running }}>{{ _("Running …") if running else _("Sync now") }}</button>
       </form>
     </div>
-  </div>
+  </section>
 
-  <form method="post" action="{{ url_for('settings_login') }}" class="card">
-    <h2>1. TimeTree account</h2>
-    <div class="muted">A TimeTree account with e-mail and password is required (social-only logins have no password). Credentials are stored encrypted.</div>
-    <label for="email">E-mail</label>
-    <input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required>
-    <label for="password">Password {% if s.has_password %}(stored – leave empty to keep it){% endif %}</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" {{ '' if s.has_password else 'required' }}>
-    <p><button type="submit">Sign in &amp; load calendars</button></p>
+  <form method="post" action="{{ url_for('settings_login') }}" class="group">
+    <h2>{{ _("TimeTree account") }}</h2>
+    <div class="card">
+      <div class="row"><label for="email">{{ _("E-mail") }}</label><input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required></div>
+      <div class="row"><label for="password">{{ _("Password") }}</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="{{ _('Leave empty to keep it') if s.has_password }}" {{ '' if s.has_password else 'required' }}></div>
+      <button class="action">{{ _("Sign in & load calendars") }}</button>
+    </div>
+    <p>{{ _("A TimeTree account with an e-mail address and password is required. Logins through Google or Apple only have no password.") }}</p>
   </form>
 
-  <form method="post" action="{{ url_for('settings_save') }}" class="card">
-    <h2>2. Calendar &amp; sync</h2>
-    <label for="calendar_code">Calendar</label>
-    {% if s.calendars %}
-      <select id="calendar_code" name="calendar_code">
-        {% for c in s.calendars %}
-          <option value="{{ c.code }}" {{ 'selected' if c.code == s.calendar_code }}>{{ c.name }} ({{ c.code }})</option>
-        {% endfor %}
-      </select>
-    {% else %}
-      <div class="muted">Sign in above first, then the calendar list appears here.</div>
-    {% endif %}
+  <form method="post" action="{{ url_for('settings_save') }}" class="group">
+    <h2>{{ _("Calendar and sync") }}</h2>
+    <div class="card">
+      <div class="row">
+        <label for="calendar_code">{{ _("Calendar") }}</label>
+        {% if s.calendars %}
+        <select id="calendar_code" name="calendar_code">
+          {% for c in s.calendars %}
+            <option value="{{ c.code }}" {{ 'selected' if c.code == s.calendar_code }}>{{ c.name }} ({{ c.code }})</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <span class="value">{{ _("Sign in first, then the calendar list appears here.") }}</span>
+        {% endif %}
+      </div>
+      <div class="row">
+        <label for="interval">{{ _("Sync interval") }}</label>
+        <select id="interval" name="interval">
+          {% for minutes, label in intervals %}
+            <option value="{{ minutes }}" {{ 'selected' if minutes == s.interval_minutes }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="row">
+        <label for="sync_now">{{ _("Sync immediately afterwards") }}</label>
+        <span class="switch"><input id="sync_now" type="checkbox" name="sync_now" value="1"><span></span></span>
+      </div>
+      <button class="action">{{ _("Save") }}</button>
+    </div>
+    <p>{{ _("Very short intervals may get you rate-limited by TimeTree.") }}</p>
+  </form>
 
-    <label for="interval">Sync interval</label>
-    <select id="interval" name="interval">
-      {% for minutes, label in intervals %}
-        <option value="{{ minutes }}" {{ 'selected' if minutes == s.interval_minutes }}>{{ label }}</option>
+  <form method="post" action="{{ url_for('settings_display') }}" id="display" autocomplete="off">
+    <section class="group">
+      <h2>{{ _("Display") }}</h2>
+      <div class="card">
+        <div class="row">
+          <label for="language">{{ _("Language") }}</label>
+          <select id="language" name="language">
+            <option value="auto" {{ 'selected' if s.language == 'auto' }}>{{ _("Automatic (browser)") }}</option>
+            <option value="de" {{ 'selected' if s.language == 'de' }}>Deutsch</option>
+            <option value="en" {{ 'selected' if s.language == 'en' }}>English</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="tasks_enabled">{{ _("Show tasks on the homepage") }}</label>
+          <span class="switch"><input id="tasks_enabled" type="checkbox" name="tasks_enabled" value="1" {{ 'checked' if s.tasks_enabled }}><span></span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>{{ _("Time and date") }}</h2>
+      <div class="card">
+        <div class="row">
+          <span class="label">{{ _("Clock style") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="clock_style" value="digital" {{ 'checked' if s.clock_style == 'digital' }}><span>{{ _("Digital") }}</span></label>
+            <label><input type="radio" name="clock_style" value="analog" {{ 'checked' if s.clock_style == 'analog' }}><span>{{ _("Analog") }}</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <span class="label">{{ _("Clock") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="time_format" value="24" {{ 'checked' if s.time_format == '24' }}><span>{{ _("24 hours") }}</span></label>
+            <label><input type="radio" name="time_format" value="12" {{ 'checked' if s.time_format == '12' }}><span>{{ _("12 hours") }}</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <label for="show_seconds">{{ _("Show seconds") }}</label>
+          <span class="switch"><input id="show_seconds" type="checkbox" name="show_seconds" value="1" {{ 'checked' if s.show_seconds }}><span></span></span>
+        </div>
+        <div class="row">
+          <label for="clock_size">{{ _("Clock size") }}</label>
+          <input id="clock_size" class="slider" type="range" name="clock_size" min="50" max="200" step="10" value="{{ s.clock_size }}">
+        </div>
+        <div class="row">
+          <label for="timezone">{{ _("Time zone") }}</label>
+          <select id="timezone" name="timezone">
+            <option value="">{{ _("Default ({zone})").format(zone=default_timezone) }}</option>
+            {% for zone in timezones %}<option value="{{ zone }}" {{ 'selected' if zone == s.timezone }}>{{ zone.replace('_', ' ') }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <span class="label">{{ _("Date") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="date_style" value="long" {{ 'checked' if s.date_style == 'long' }}><span>{{ _("Long") }}</span></label>
+            <label><input type="radio" name="date_style" value="numeric" {{ 'checked' if s.date_style == 'numeric' }}><span>{{ _("Numeric") }}</span></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>{{ _("Greeting") }}</h2>
+      <div class="card">
+        <div class="row">
+          <label for="greeting_enabled">{{ _("Show greeting") }}</label>
+          <span class="switch"><input id="greeting_enabled" type="checkbox" name="greeting_enabled" value="1" {{ 'checked' if s.greeting_enabled }}><span></span></span>
+        </div>
+        <div class="row"><label for="greeting_name">{{ _("Your name") }}</label><input id="greeting_name" name="greeting_name" maxlength="40" value="{{ s.greeting_name }}"></div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>{{ _("Weather") }}</h2>
+      <div class="card">
+        <div class="row">
+          <label for="weather_enabled">{{ _("Show weather") }}</label>
+          <span class="switch"><input id="weather_enabled" type="checkbox" name="weather_enabled" value="1" {{ 'checked' if s.weather_enabled }}><span></span></span>
+        </div>
+        <div class="row"><label for="weather_city">{{ _("Place") }}</label><input id="weather_city" name="weather_city" maxlength="80" value="{{ s.weather_city }}" placeholder="Berlin"></div>
+        <div class="row">
+          <span class="label">{{ _("Unit") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="weather_unit" value="celsius" {{ 'checked' if s.weather_unit == 'celsius' }}><span>°C</span></label>
+            <label><input type="radio" name="weather_unit" value="fahrenheit" {{ 'checked' if s.weather_unit == 'fahrenheit' }}><span>°F</span></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>{{ _("Background") }}</h2>
+      <div class="card">
+        <div class="row">
+          <span class="label">{{ _("Type") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="background_type" value="photo" {{ 'checked' if s.background_type == 'photo' }}><span>{{ _("Photos") }}</span></label>
+            <label><input type="radio" name="background_type" value="color" {{ 'checked' if s.background_type == 'color' }}><span>{{ _("Color") }}</span></label>
+          </div>
+        </div>
+        <div class="row"><label for="background_color">{{ _("Color") }}</label><input id="background_color" class="swatch" type="color" name="background_color" value="{{ s.background_color }}"></div>
+        <div class="row">
+          <label for="background_every">{{ _("Change") }}</label>
+          <select id="background_every" name="background_every">
+            <option value="hour" {{ 'selected' if s.background_every == 'hour' }}>{{ _("Every hour") }}</option>
+            <option value="day" {{ 'selected' if s.background_every == 'day' }}>{{ _("Every day") }}</option>
+            <option value="fixed" {{ 'selected' if s.background_every == 'fixed' }}>{{ _("Never") }}</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="background_blur">{{ _("Blur") }}</label>
+          <input id="background_blur" class="slider" type="range" name="background_blur" min="0" max="50" value="{{ s.background_blur }}">
+        </div>
+        <div class="row">
+          <label for="background_brightness">{{ _("Brightness") }}</label>
+          <input id="background_brightness" class="slider" type="range" name="background_brightness" min="20" max="100" value="{{ s.background_brightness }}">
+        </div>
+        <button type="button" class="action" id="new-photo">{{ _("New photo") }}</button>
+      </div>
+      <p>{{ _("Photos come from Lorem Picsum.") }}</p>
+    </section>
+
+    <section class="group">
+      <h2>{{ _("Font") }}</h2>
+      <div class="card">
+        <div class="row">
+          <label for="font_family">{{ _("Font family") }}</label>
+          <select id="font_family" name="font_family">
+            {% for key, font in fonts.items() %}<option value="{{ key }}" {{ 'selected' if s.font_family == key }}>{{ font or _("System") }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <label for="font_size">{{ _("Font size") }}</label>
+          <input id="font_size" class="slider" type="range" name="font_size" min="70" max="150" step="5" value="{{ s.font_size }}">
+        </div>
+        <div class="row">
+          <label for="font_weight">{{ _("Font weight") }}</label>
+          <input id="font_weight" class="slider" type="range" name="font_weight" min="300" max="700" step="100" value="{{ s.font_weight }}">
+        </div>
+      </div>
+      <p>{{ _("Other fonts are loaded from Google Fonts.") }}</p>
+    </section>
+    <noscript><button class="action">{{ _("Save") }}</button></noscript>
+  </form>
+
+  <section class="group">
+    <h2>{{ _("Calendar subscription") }}</h2>
+    <div class="card">
+      <div class="row stack">
+        <label for="ics-local">{{ _("ICS URL (home network)") }}</label>
+        <div class="row" style="padding:0;min-height:0"><input class="mono" id="ics-local" readonly value="{{ ics_local }}"><button type="button" class="copy" data-copy="ics-local">{{ _("Copy") }}</button></div>
+      </div>
+      {% if ics_pub %}
+      <div class="row stack">
+        <label for="ics-public">{{ _("ICS URL (public)") }}</label>
+        <div class="row" style="padding:0;min-height:0"><input class="mono" id="ics-public" readonly value="{{ ics_pub }}"><button type="button" class="copy" data-copy="ics-public">{{ _("Copy") }}</button></div>
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('settings_save') }}" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('The current URL stops working. Generate a new token?') }}">
+        <input type="hidden" name="interval" value="{{ s.interval_minutes }}">
+        <input type="hidden" name="calendar_code" value="{{ s.calendar_code }}">
+        <input type="hidden" name="new_token" value="1">
+        <button class="action destructive">{{ _("Generate new token") }}</button>
+      </form>
+    </div>
+    <p>{{ _("Add this URL to your calendar app. Outlook on the web, Microsoft 365 and Google Calendar need the public URL.") }}</p>
+  </section>
+
+  <form method="post" action="{{ url_for('settings_tunnel') }}" class="group">
+    <h2>{{ _("Cloudflare tunnel") }}</h2>
+    <div class="card">
+      <div class="row"><span class="label">Status:</span><span class="value">{{ tunnel.status }}{% if tunnel.error %} · {{ tunnel.error }}{% endif %}</span></div>
+      <div class="row">
+        <label for="tunnel_enabled">{{ _("Tunnel enabled") }}</label>
+        <span class="switch"><input id="tunnel_enabled" type="checkbox" name="tunnel_enabled" value="1" {{ 'checked' if s.tunnel_enabled }}><span></span></span>
+      </div>
+      <div class="row"><label for="tunnel_token">{{ _("Tunnel token") }}</label><input id="tunnel_token" name="tunnel_token" type="password" autocomplete="off" placeholder="{{ _('Token is stored') if s.has_tunnel_token else 'eyJ…' }}"></div>
+      {% if s.has_tunnel_token %}
+      <div class="row">
+        <label for="clear_token">{{ _("Delete the stored token") }}</label>
+        <span class="switch"><input id="clear_token" type="checkbox" name="clear_token" value="1"><span></span></span>
+      </div>
+      {% endif %}
+      <div class="row"><label for="public_hostname">{{ _("Public hostname") }}</label><input id="public_hostname" name="public_hostname" value="{{ s.public_hostname }}" placeholder="calendar.example.com" autocapitalize="off" spellcheck="false"></div>
+    </div>
+    <p>{{ _("In Cloudflare, set the public hostname to the service HTTP and localhost:{port}.").format(port=public_port) }}</p>
+  </form>
+
+  <section class="group">
+    <h2>{{ _("Reachable through the tunnel") }}</h2>
+    <div class="card">
+      {% for mode, title, text in [('off', _("Nothing"), _("Only the /ping health check.")), ('ics', _("ICS file only"), _("The ICS feed and /ping. Everything else returns 404.")), ('dashboard', _("Homepage (read-only) + ICS"), _("The homepage without tasks and settings, the ICS feed and /ping."))] %}
+      <label class="row option">
+        <input form="tunnel-form" type="radio" name="public_mode" value="{{ mode }}" {{ 'checked' if s.public_mode == mode }}>
+        <div><strong>{{ title }}</strong><small>{{ text }}</small></div>
+        <span class="tick">✓</span>
+      </label>
       {% endfor %}
-    </select>
-    <div class="muted">Very short intervals may get you rate-limited by TimeTree.</div>
-
-    <label>ICS URL (internal)</label>
-    <input class="mono" readonly value="{{ ics_local }}" onclick="this.select()">
-    {% if ics_pub %}
-      <label>ICS URL (public)</label>
-      <input class="mono" readonly value="{{ ics_pub }}" onclick="this.select()">
-    {% endif %}
-    <div class="check"><input id="new_token" type="checkbox" name="new_token" value="1"><label for="new_token" style="margin:0;color:inherit">Generate a new token (the old URL stops working)</label></div>
-    <div class="check"><input id="sync_now" type="checkbox" name="sync_now" value="1"><label for="sync_now" style="margin:0;color:inherit">Sync immediately afterwards</label></div>
-    <p><button type="submit">Save</button></p>
-  </form>
-
-  <form method="post" action="{{ url_for('settings_tunnel') }}" class="card">
-    <h2>3. Sharing via Cloudflare tunnel</h2>
-    <div class="muted">
-      Status: <strong>{{ tunnel.status }}</strong>{% if tunnel.error %} · {{ tunnel.error }}{% endif %}
+      <button class="action" form="tunnel-form">{{ _("Save") }}</button>
     </div>
+    <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
+  </section>
 
-    <label for="tunnel_token">Tunnel token {% if s.has_tunnel_token %}(stored – leave empty to keep it){% endif %}</label>
-    <input id="tunnel_token" name="tunnel_token" type="password" autocomplete="off" placeholder="eyJ…">
-    {% if s.has_tunnel_token %}
-      <div class="check"><input id="clear_token" type="checkbox" name="clear_token" value="1"><label for="clear_token" style="margin:0;color:inherit">Delete the stored token</label></div>
-    {% endif %}
-    <div class="check"><input id="tunnel_enabled" type="checkbox" name="tunnel_enabled" value="1" {{ 'checked' if s.tunnel_enabled }}><label for="tunnel_enabled" style="margin:0;color:inherit">Tunnel enabled</label></div>
-
-    <label>What should be reachable through the tunnel?</label>
-    <label class="opt"><input type="radio" name="public_mode" value="off" {{ 'checked' if s.public_mode == 'off' }}><span><strong>Nothing</strong><br><span class="muted">Public requests are rejected, except the <code>/ping</code> health check.</span></span></label>
-    <label class="opt"><input type="radio" name="public_mode" value="ics" {{ 'checked' if s.public_mode == 'ics' }}><span><strong>ICS file only</strong><br><span class="muted">Only <code>/calendar.ics?token=…</code> and the <code>/ping</code> health check – everything else returns 404.</span></span></label>
-    <label class="opt"><input type="radio" name="public_mode" value="dashboard" {{ 'checked' if s.public_mode == 'dashboard' }}><span><strong>Dashboard (read-only) + ICS</strong><br><span class="muted">Status and events are visible; settings and sync stay reachable internally only.</span></span></label>
-    <div class="warn">The dashboard has no login of its own. If you expose it, additionally protect the hostname with a Cloudflare Zero Trust <strong>Access policy</strong>.</div>
-
-    <label for="public_hostname">Public hostname (only used to display the ICS URL)</label>
-    <input id="public_hostname" name="public_hostname" value="{{ s.public_hostname }}" placeholder="calendar.example.com">
-
-    <div class="muted" style="margin-top:10px">
-      In Cloudflare under <em>Zero Trust → Networks → Tunnels → Public Hostname</em> set the service to
-      <code>HTTP</code> · <code>localhost:{{ public_port }}</code>. That port enforces the mode selected above.
-    </div>
-    <p><button type="submit">Save</button></p>
-  </form>
+<script>
+  document.querySelector('form[action$="/settings/tunnel"]').id = 'tunnel-form';
+  const notify = message => { if (top !== self) parent.postMessage(message, location.origin); };
+  if (top !== self) {
+    document.documentElement.classList.add('embedded');
+    document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); notify('close-settings'); });
+  }
+  const form = document.getElementById('display');
+  let timer;
+  let queue = Promise.resolve();
+  // Saves run one after the other, so an older form state can never overwrite a newer one
+  const autosave = () => { queue = queue.then(save, save); };
+  async function save() {
+    const response = await fetch(form.action, { method: 'POST', headers: { 'X-Autosave': '1' }, body: new FormData(form) });
+    if (!response.ok) return;
+    const { message, weather_city: city } = await response.json();
+    // Only a found place is written back: an older save must not erase what is being typed
+    if (city) document.getElementById('weather_city').value = city;
+    const hint = document.getElementById('saved');
+    hint.textContent = message;
+    hint.classList.add('show');
+    setTimeout(() => hint.classList.remove('show'), 1600);
+    notify('settings-changed');
+  }
+  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('change', autosave);
+  form.addEventListener('input', event => {
+    if (event.target.type !== 'range') return;
+    clearTimeout(timer);
+    timer = setTimeout(autosave, 150);
+  });
+  document.getElementById('new-photo').addEventListener('click', async () => {
+    await fetch('/api/background/refresh', { method: 'POST' });
+    notify('settings-changed');
+  });
+  document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', () => {
+    document.getElementById(button.dataset.copy).select();
+    document.execCommand('copy');
+  }));
+</script>
 {% endblock %}

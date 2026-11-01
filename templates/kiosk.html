@@ -1,108 +1,150 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <title>{{ s.calendar_name or 'TimeTree ICS' }}</title>
 <style>
-  :root { --bg:#f3f1ec; --panel:#fffdf9; --fg:#20242a; --muted:#6c727b; --line:#e3dfd6; --accent:#2f6fde; --accent-soft:#e3ecfb; --ok:#1c8a55; --err:#c8373f; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#101317; --panel:#191e24; --fg:#eceef0; --muted:#98a1ab; --line:#2a313a; --accent:#6ea2ff; --accent-soft:#223249; --ok:#4cc38a; --err:#ff6b70; } }
+  :root { --glass:#16181c61; --glass-line:#ffffff24; --fg:#fff; --muted:#ffffffb8; --line:#ffffff26; --accent:#7cc7ff; --solid:#fff; --solid-fg:#1c1c1e; --solid-muted:#6c6c70; --blue:#007aff;
+          --font:system-ui,sans-serif; --weight:300; --scale:1; --clock-scale:1; }
   * { box-sizing:border-box; }
-  html { font-size:clamp(14px, 2.1vmin, 36px); }
-  body { margin:0; height:100vh; height:100dvh; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:1rem; padding:1rem 1.25rem;
-         font:1rem/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--fg); }
-  header { display:flex; align-items:center; gap:1.25rem; }
-  #clock { font-size:3.2rem; font-weight:300; line-height:1; font-variant-numeric:tabular-nums; }
-  #date { font-size:1.2rem; font-weight:600; }
-  #calendar { color:var(--muted); font-size:.9rem; }
-  .spacer { flex:1; }
-  #gear { flex:none; display:grid; place-items:center; width:3rem; height:3rem; min-width:44px; min-height:44px; border-radius:50%; color:var(--muted); }
-  #gear:hover, #gear:focus-visible { background:var(--panel); color:var(--fg); }
-  #gear svg { width:60%; height:60%; }
-  main { display:grid; gap:1rem; min-height:0; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); grid-template-rows:minmax(0,1.2fr) minmax(0,1fr);
-         grid-template-areas:"today week" "tasks week"; }
-  main.no-tasks { grid-template-rows:minmax(0,1fr); grid-template-areas:"today week"; }
+  html { font-size:calc(clamp(14px, 2.1vmin, 36px) * var(--scale)); }
+  body { margin:0; height:100vh; height:100dvh; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto; gap:.9rem; padding:1rem 1.25rem .5rem;
+         font:400 1rem/1.35 var(--font); -webkit-font-smoothing:antialiased; background:#14181d; color:var(--fg); text-shadow:0 1px 3px #0004; }
+  #background { position:fixed; inset:-60px; z-index:-1; background:#14181d center/cover no-repeat; opacity:0; transition:opacity 1.2s ease, filter .3s ease; }
+  #background.ready { opacity:1; }
+  header { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:start; gap:1rem; }
+  #centre { grid-column:2; grid-row:1; display:flex; text-shadow:0 1px 10px #0009, 0 0 2px #0006; flex-direction:column; align-items:center; text-align:center; min-width:0; }
+  #clock { font-size:calc(4.6rem * var(--clock-scale)); font-weight:var(--weight); line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #analog { width:calc(7rem * var(--clock-scale)); height:calc(7rem * var(--clock-scale)); filter:drop-shadow(0 1px 3px #0005); }
+  #analog[hidden], #clock[hidden] { display:none; }
+  #date { font-size:1.15rem; margin-top:.15rem; }
+  #greeting { font-size:1.6rem; font-weight:var(--weight); margin-top:.4rem; }
+  #greeting:empty, #weather:empty { display:none; }
+  #weather { color:var(--muted); }
+  #corner { grid-column:3; display:flex; justify-content:flex-end; gap:.75rem; min-width:0; }
+  .glass { background:var(--glass); border:.5px solid var(--glass-line); -webkit-backdrop-filter:blur(26px) saturate(150%); backdrop-filter:blur(26px) saturate(150%); }
+  /* Settings icon and corner placement from Bonjourr (GPL-3.0) */
+  #gear { position:fixed; right:.6rem; bottom:.4rem; z-index:9; display:grid; place-items:center; width:52px; height:52px; color:#fff; cursor:pointer; filter:drop-shadow(0 1px 3px #0009); transition:transform .3s ease; }
+  #gear:hover { transform:rotate(30deg); }
+  #gear.open { color:#3c3c43; filter:none; }
+  #gear svg { width:34px; height:34px; }
+  main { display:grid; gap:.9rem; min-height:0; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr); grid-template-areas:"today week tasks"; }
+  main.no-tasks { grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); grid-template-areas:"today week"; }
   @media (orientation: portrait) {
-    main { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,1.5fr) minmax(0,.75fr); grid-template-areas:"today" "week" "tasks"; }
-    main.no-tasks { grid-template-rows:minmax(0,1fr) minmax(0,1.5fr); grid-template-areas:"today" "week"; }
-    #clock { font-size:4rem; }
-    header { flex-wrap:wrap; }
-    #reminder { order:1; flex:1 0 100%; }
+    /* Today and tasks take what they need up to a limit; the week view gets all remaining space */
+    main, main.no-tasks { display:flex; flex-direction:column; }
+    #today, #tasks { flex:0 0 auto; }
+    #today { max-height:38%; }
+    #tasks { max-height:28%; }
+    #week { flex:1 1 0; }
+    #today ul, #tasks ul { flex:0 1 auto; }
+    #corner { grid-column:1 / -1; grid-row:2; }
+    #corner:has(#reminder[hidden]) { display:none; }
+    #reminder { flex:1; }
   }
-  section { background:var(--panel); border:1px solid var(--line); border-radius:1rem; padding:1rem 1.1rem; min-height:0; display:flex; flex-direction:column; }
+  section { border-radius:1.1rem; padding:.9rem 1.1rem; min-height:0; display:flex; flex-direction:column; }
   #today { grid-area:today; } #week { grid-area:week; } #tasks { grid-area:tasks; }
-  h2 { margin:0 0 .5rem; font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600; }
-  ul { list-style:none; margin:0; padding:0; overflow-y:auto; min-height:0; flex:1; }
+  h2 { margin:0 0 .4rem; font-size:1.2rem; font-weight:600; }
+  ul { list-style:none; margin:0; padding:0; overflow-y:auto; min-height:0; flex:1; scrollbar-width:none; }
   .empty { color:var(--muted); padding:.25rem 0; }
   .event { display:flex; gap:.75rem; padding:.45rem 0; align-items:baseline; }
-  .event + .event { border-top:1px solid var(--line); }
-  .event time { flex:0 0 5.2em; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .event + .event { border-top:.5px solid var(--line); }
+  .event time { flex:0 0 4.7em; color:var(--muted); font-variant-numeric:tabular-nums; }
   .event strong { font-weight:500; min-width:0; overflow-wrap:anywhere; }
-  #today .event { font-size:1.2rem; }
-  .event.past { opacity:.45; }
-  .event.next strong { color:var(--accent); }
-  .day { display:grid; grid-template-columns:5.5em minmax(0,1fr); gap:.75rem; padding:.5rem 0; }
-  .day + .day { border-top:1px solid var(--line); }
+  .bullet { flex:none; width:.62em; height:.62em; border-radius:50%; position:relative; top:-.06em; background:var(--muted); box-shadow:0 0 0 1px #0003; }
+  #today .event { font-size:1.1rem; }
+  .event.past { opacity:.5; }
+  .event.next strong { color:var(--accent); font-weight:600; }
+  .day { display:grid; grid-template-columns:4.5em minmax(0,1fr); gap:.75rem; padding:.42rem 0; }
+  .day + .day { border-top:.5px solid var(--line); }
   .day h3 { margin:0; font-size:1rem; font-weight:600; line-height:1.3; }
   .day h3 small { display:block; color:var(--muted); font-weight:400; font-size:.8rem; }
   .day .item { display:flex; gap:.5rem; align-items:baseline; }
-  .day .item time { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; }
-  .day .item span { min-width:0; overflow-wrap:anywhere; }
+  .day .item time { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .day .item .title { min-width:0; overflow-wrap:anywhere; }
   .task { display:flex; align-items:center; gap:.6rem; min-height:44px; }
-  .task label { flex:1; min-width:0; display:flex; align-items:center; gap:.6rem; overflow-wrap:anywhere; }
-  .task input { width:1.3rem; height:1.3rem; accent-color:var(--accent); flex:none; }
+  .task label { flex:1; min-width:0; display:flex; align-items:center; gap:.7rem; overflow-wrap:anywhere; cursor:pointer; }
+  .task input { appearance:none; -webkit-appearance:none; flex:none; width:1.4rem; height:1.4rem; min-height:0; padding:0; margin:0; border-radius:50%; border:2px solid var(--muted); background:none; display:grid; place-items:center; cursor:pointer; }
+  .task input:checked { background:var(--fg); border-color:var(--fg); }
+  .task input:checked::after { content:"✓"; color:#1c1c1e; font-size:.85rem; line-height:1; text-shadow:none; }
   .task.done label { color:var(--muted); text-decoration:line-through; }
   .task button { background:none; border:0; color:var(--muted); font:inherit; font-size:1.3rem; min-width:44px; min-height:44px; cursor:pointer; }
   #task-form { display:flex; gap:.5rem; margin-top:.5rem; }
-  #task-form input { flex:1; min-width:0; }
-  input, select { font:inherit; padding:.5rem .7rem; min-height:44px; border:1px solid var(--line); border-radius:.6rem; background:var(--bg); color:var(--fg); width:100%; }
-  .button { background:var(--accent); color:#fff; border:0; border-radius:.6rem; padding:.5rem 1rem; min-height:44px; font:inherit; font-weight:600; cursor:pointer; }
-  @media (prefers-color-scheme: dark) { .button { color:#0d1420; } }
-  #task-form .button { width:auto; }
-  #reminder { flex:0 1 26rem; min-width:0; min-height:44px; background:var(--accent); color:#fff; border:0; border-radius:.8rem; padding:.5rem .9rem; font:inherit; text-align:left; cursor:pointer; }
+  #task-form input { flex:1; min-width:0; background:#ffffff1f; color:var(--fg); }
+  #task-form input::placeholder { color:var(--muted); }
+  #task-form .button { width:auto; background:#ffffff2e; color:var(--fg); }
+  input, select { font:inherit; padding:.5rem .8rem; min-height:44px; border:0; border-radius:.7rem; width:100%; }
+  .button { border:0; border-radius:.7rem; padding:.5rem 1rem; min-height:44px; font:inherit; font-weight:600; cursor:pointer; }
+  #reminder { flex:0 1 22rem; min-width:0; min-height:44px; color:var(--fg); border-radius:.9rem; padding:.5rem .9rem; font:inherit; text-align:left; cursor:pointer; }
   #reminder strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-  @media (prefers-color-scheme: dark) { #reminder { color:#0d1420; } }
   #reminder[hidden] { display:none; }
-  #reminder small { display:block; opacity:.85; }
-  #setup { position:fixed; inset:0; z-index:10; display:grid; place-items:center; padding:1rem; overflow-y:auto; background:#0b0e12d9; }
-  .dialog { width:min(30rem,100%); background:var(--panel); border-radius:1rem; padding:1.5rem; }
-  .dialog h1 { margin:0 0 .25rem; font-size:1.5rem; }
-  .dialog p { margin:0 0 .75rem; color:var(--muted); }
-  .dialog label { display:block; margin:.75rem 0 .25rem; font-size:.85rem; color:var(--muted); }
-  .dialog .button { width:100%; margin-top:1rem; }
-  .step { font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-  .msg { padding:.6rem .8rem; border-radius:.6rem; margin-bottom:.5rem; color:#fff; background:var(--ok); }
-  .msg.err { background:var(--err); }
+  #reminder small { display:block; color:var(--muted); }
+  #credit { font-size:.75rem; color:var(--muted); min-height:40px; display:flex; align-items:center; gap:.25em; padding-right:60px; }
+  #credit a { color:inherit; text-decoration:none; }
+  #panel { position:fixed; top:0; right:0; height:100%; z-index:8; width:min(26rem,100vw); min-width:min(380px,100vw); border:0; background:#f2f2f7; box-shadow:-.5rem 0 3rem #0006; transform:translateX(105%); transition:transform .28s ease; visibility:hidden; }
+  #panel.open { transform:none; visibility:visible; }
+  #setup { position:fixed; inset:0; z-index:10; display:grid; place-items:center; padding:1rem; overflow-y:auto; background:#0006; -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px); text-shadow:none; }
+  .dialog { width:min(30rem,100%); background:var(--solid); color:var(--solid-fg); border-radius:1.2rem; padding:1.6rem; box-shadow:0 1rem 4rem #0004; }
+  .dialog h1 { margin:0 0 .25rem; font-size:1.6rem; font-weight:700; }
+  .dialog p { margin:0 0 .75rem; color:var(--solid-muted); }
+  .dialog label { display:block; margin:.75rem 0 .25rem; font-size:.85rem; color:var(--solid-muted); }
+  .dialog input, .dialog select { background:#f2f2f7; color:var(--solid-fg); }
+  .dialog .button { width:100%; margin-top:1rem; background:var(--blue); color:#fff; }
+  .step { font-size:.85rem; color:var(--solid-muted); }
+  .msg { padding:.6rem .8rem; border-radius:.7rem; margin-bottom:.5rem; color:#fff; background:#34c759; }
+  .msg.err { background:#ff3b30; }
 </style>
+<link id="font-link" rel="stylesheet" href="{{ config.fontUrl or 'data:text/css,' }}">
 </head>
 <body>
+  <div id="background"></div>
   <header>
-    <div id="clock"></div>
-    <div><div id="date"></div><div id="calendar">{{ s.calendar_name }}</div></div>
-    <div class="spacer"></div>
-    <button id="reminder" hidden></button>
-    {% if not public and not setup %}
-    <a id="gear" href="{{ url_for('settings_page') }}" aria-label="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0-1.2-2.8H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.8.3h.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
-    </a>
-    {% endif %}
+    <div id="centre">
+      <div id="clock"></div>
+      <svg id="analog" viewBox="0 0 100 100" hidden aria-hidden="true">
+        <circle cx="50" cy="50" r="47" fill="#0000001f" stroke="#fff" stroke-width="1.5"/>
+        <g stroke="#fff" stroke-linecap="round">
+          <line id="hand-hour" x1="50" y1="50" x2="50" y2="27" stroke-width="3.5"/>
+          <line id="hand-minute" x1="50" y1="50" x2="50" y2="13" stroke-width="2.5"/>
+          <line id="hand-second" x1="50" y1="56" x2="50" y2="10" stroke-width="1"/>
+        </g>
+        <circle cx="50" cy="50" r="2.6" fill="#fff"/>
+      </svg>
+      <div id="date"></div>
+      <div id="greeting"></div>
+      <div id="weather"></div>
+    </div>
+    <div id="corner">
+      <button id="reminder" class="glass" hidden></button>
+    </div>
   </header>
 
-  <main class="{{ 'no-tasks' if public }}">
-    <section id="today"><h2>Today</h2><ul id="today-list"></ul></section>
-    <section id="week"><h2>Next 7 days</h2><ul id="week-list"></ul></section>
-    {% if not public %}
-    <section id="tasks">
-      <h2>Tasks</h2>
+  <main class="{{ 'no-tasks' if not show_tasks }}">
+    <section id="today" class="glass"><h2>{{ _("Today") }}</h2><ul id="today-list"></ul></section>
+    <section id="week" class="glass"><h2>{{ _("Next 7 days") }}</h2><ul id="week-list"></ul></section>
+    {% if show_tasks %}
+    <section id="tasks" class="glass">
+      <h2>{{ _("Tasks") }}</h2>
       <ul id="task-list"></ul>
       <form id="task-form">
-        <input id="task-title" maxlength="200" placeholder="New task" aria-label="New task" autocomplete="off">
-        <button class="button">Add</button>
+        <input id="task-title" maxlength="200" placeholder="{{ _("New task") }}" aria-label="{{ _("New task") }}" autocomplete="off">
+        <button class="button">{{ _("Add") }}</button>
       </form>
     </section>
     {% endif %}
   </main>
+  <div id="credit"></div>
+  {% if not public and not setup %}
+  <a id="gear" href="{{ url_for('settings_page') }}" aria-label="{{ _("Settings") }}"><svg viewBox="0 0 52.83 52.9" aria-hidden="true"><path fill="currentColor" d="M29.73 52.57c-.26-.2-.93-1.41-1.48-2.71-1.1-2.57-1.42-2.93-2.42-2.68-.51.13-.89.66-1.67 2.36-1.2 2.59-1.6 3.11-2.4 3.11-1.1 0-1.35-.58-1.51-3.48-.13-2.38-.23-2.78-.73-3.2-.32-.25-.7-.46-.84-.46s-1.25.95-2.46 2.12c-1.22 1.16-2.38 2.11-2.59 2.11-.52 0-1.25-.86-1.25-1.49 0-.28.3-1.56.67-2.84 1.12-3.84.46-4.31-3.47-2.54-2.15.98-2.6 1.1-3.16.83-1.08-.49-.85-1.45.93-3.9 1.72-2.37 1.91-3.07 1-3.66-.5-.3-1.06-.33-3.2-.11-2.9.29-3.27.22-3.6-.64-.33-.89.05-1.37 2.2-2.83 1.07-.72 2.14-1.5 2.38-1.74 1.1-1.1.16-1.97-2.97-2.78C.38 27.33-.28 26.82.1 25.72c.23-.64.53-.79 2.97-1.42 1.5-.4 2.9-.85 3.1-1.03.77-.63.46-1.54-.84-2.44-2.35-1.62-3.8-2.85-3.8-3.21 0-.2.22-.64.5-.97.48-.6.5-.6 3.35-.3 2.56.29 2.9.27 3.34-.12.27-.24.48-.64.48-.89 0-.24-.7-1.5-1.58-2.8-.88-1.29-1.59-2.53-1.59-2.77 0-.48.8-1.3 1.27-1.3.17 0 1.43.56 2.8 1.24 2.22 1.1 2.59 1.2 3.19.93.84-.38.86-.96.13-3.82-.68-2.68-.61-3.42.36-3.76.68-.24.87-.12 2.91 1.91 1.2 1.2 2.37 2.17 2.6 2.17.88 0 1.26-.89 1.54-3.7C21.13.59 21.4 0 22.44 0c.67 0 1.17.71 2.24 3.23 1.48 3.46 2.38 3.5 3.98.14C29.95.65 30.26.27 31.2.27c1 0 1.19.46 1.38 3.53.09 1.44.3 2.78.46 2.98.68.82 1.61.4 3.7-1.62 1.12-1.1 2.18-1.98 2.35-1.98.17 0 .54.12.82.27.7.38.66 1.39-.2 4.23-.68 2.3-.68 2.38-.21 2.9.66.74 1.06.68 3.67-.53 2.43-1.12 3.04-1.25 3.55-.74.64.64.3 1.64-1.3 3.84-1.28 1.78-1.57 2.35-1.44 2.88.23.9.9 1.09 3.14.86 3.25-.32 3.57-.29 4.05.44.38.6.39.72.03 1.27-.22.34-1.35 1.24-2.52 2-1.16.77-2.17 1.6-2.23 1.85-.25.92.26 1.59 1.44 1.9 3.93 1.02 4.7 1.33 4.86 1.96.3 1.24-.22 1.63-3.05 2.28-4.1.92-4.48 1.93-1.54 3.95 3.15 2.17 3.63 2.89 2.59 3.84-.48.43-.74.45-3.34.15-2.55-.28-2.85-.27-3.3.14-.28.25-.5.65-.5.88 0 .24.7 1.49 1.58 2.78.87 1.29 1.59 2.56 1.59 2.83s-.31.69-.69.93c-.67.44-.74.42-3.3-.83-2.3-1.14-2.68-1.25-3.28-.98-.84.38-.87 1.09-.13 3.74.71 2.56.62 3.5-.36 3.84-.7.25-.86.14-2.88-1.91-3.1-3.16-3.7-2.93-4.14 1.52-.21 2.1-.39 2.85-.74 3.11-.58.43-.93.42-1.53-.01zm.75-10.23c1.12-.29 2.78-.91 3.68-1.39a20.16 20.16 0 0 0 6.23-5.87c1.16-2.37 2.24-4.33 2.02-6.9l-7.43-.07c-6.82-.07-7.46-.03-7.85.4-.77.86-7.08 12.01-7.08 12.51 0 1.57 6.34 2.37 10.43 1.32zm-9.73-9.13c1.96-3.4 3.53-6.38 3.53-6.75 0-1.03-6.91-12.82-7.57-12.91-.74-.11-3.68 3.05-4.8 5.16a16.98 16.98 0 0 0-.02 15.46c1.12 2.1 4.08 5.3 4.8 5.2.39-.06 1.5-1.76 4.06-6.16zm21.18-12.13A17 17 0 0 0 30.1 10.42c-3.53-.89-9.8-.02-10 1.38-.08.5 6.05 11.48 7.03 12.61.38.43 1.02.46 7.84.4l7.43-.07c.19-1.27-.1-2.6-.48-3.66z"/></svg></a>
+  {% endif %}
+
+  {% if not public and not setup %}<iframe id="panel" title="{{ _("Settings") }}"></iframe>{% endif %}
 
   {% if setup %}
   <div id="setup" role="dialog" aria-modal="true" aria-labelledby="setup-title">
@@ -111,30 +153,30 @@
         {% for cat, m in messages %}<div class="msg {{ cat }}">{{ m }}</div>{% endfor %}
       {% endwith %}
       {% if s.has_password and s.calendars %}
-      <div class="step">Step 2 of 2</div>
-      <h1 id="setup-title">Choose your calendar</h1>
-      <p>This calendar appears on the homepage and in the ICS feed.</p>
+      <div class="step">{{ _("Step 2 of 2") }}</div>
+      <h1 id="setup-title">{{ _("Choose your calendar") }}</h1>
+      <p>{{ _("This calendar appears on the homepage and in the ICS feed.") }}</p>
       <form method="post" action="{{ url_for('settings_save') }}">
         <input type="hidden" name="setup" value="1">
         <input type="hidden" name="sync_now" value="1">
         <input type="hidden" name="interval" value="{{ s.interval_minutes or default_minutes }}">
-        <label for="calendar_code">Calendar</label>
+        <label for="calendar_code">{{ _("Calendar") }}</label>
         <select id="calendar_code" name="calendar_code" required>
           {% for c in s.calendars %}<option value="{{ c.code }}">{{ c.name }} ({{ c.code }})</option>{% endfor %}
         </select>
-        <button class="button">Finish setup</button>
+        <button class="button">{{ _("Finish setup") }}</button>
       </form>
       {% else %}
-      <div class="step">Step 1 of 2</div>
-      <h1 id="setup-title">Sign in to TimeTree</h1>
-      <p>Your account needs an e-mail address and password. Credentials are stored encrypted.</p>
+      <div class="step">{{ _("Step 1 of 2") }}</div>
+      <h1 id="setup-title">{{ _("Sign in to TimeTree") }}</h1>
+      <p>{{ _("Your account needs an e-mail address and password. Credentials are stored encrypted.") }}</p>
       <form method="post" action="{{ url_for('settings_login') }}">
         <input type="hidden" name="setup" value="1">
-        <label for="email">E-mail</label>
+        <label for="email">{{ _("E-mail") }}</label>
         <input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required autofocus>
-        <label for="password">Password</label>
+        <label for="password">{{ _("Password") }}</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <button class="button">Sign in &amp; load calendars</button>
+        <button class="button">{{ _("Sign in & load calendars") }}</button>
       </form>
       {% endif %}
     </div>
@@ -143,50 +185,89 @@
 
 <script>
 (() => {
+  let CONFIG = {{ config|tojson }};
+  const text = key => CONFIG.text[key];
   const $ = id => document.getElementById(id);
-  const make = (tag, className, text) => {
+  const make = (tag, className, content) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
+    if (content !== undefined) node.textContent = content;
     return node;
   };
-  const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-  const startsAt = e => new Date(`${e.date}T${e.time || '00:00'}:00`);
+  let clock, seconds, parts, keyFormat, dateLabel, weekdayLabel, dayLabel;
+  const addDays = (key, n) => new Date(Date.parse(`${key}T00:00:00Z`) + n * 86400000);
+  const timeOf = value => clock.format(value * 1000);
+  const bullet = event => {
+    const dot = make('span', 'bullet');
+    if (event.color) dot.style.backgroundColor = event.color;
+    return dot;
+  };
   let events = [];
   const dismissed = new Set();
 
+  function applyConfig() {
+    const inZone = options => new Intl.DateTimeFormat(CONFIG.locale, { timeZone: CONFIG.timeZone, ...options });
+    // Days of the week view are civil dates; formatting them in UTC keeps them independent of the time zone
+    const civil = options => new Intl.DateTimeFormat(CONFIG.locale, { timeZone: 'UTC', ...options });
+    clock = inZone({ hour: '2-digit', minute: '2-digit', hour12: CONFIG.hour12 });
+    seconds = inZone({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: CONFIG.hour12 });
+    parts = new Intl.DateTimeFormat('en-GB', { timeZone: CONFIG.timeZone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' });
+    keyFormat = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    dateLabel = CONFIG.dateStyle === 'numeric'
+      ? inZone({ weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+      : inZone({ weekday: 'long', day: 'numeric', month: 'long' });
+    weekdayLabel = civil({ weekday: 'short' });
+    dayLabel = CONFIG.dateStyle === 'numeric' ? civil({ day: '2-digit', month: '2-digit' }) : civil({ day: 'numeric', month: 'short' });
+    const root = document.documentElement.style;
+    root.setProperty('--font', CONFIG.fontFamily);
+    root.setProperty('--weight', CONFIG.fontWeight);
+    root.setProperty('--scale', CONFIG.fontSize / 100);
+    root.setProperty('--clock-scale', CONFIG.clockSize / 100);
+    if (CONFIG.fontUrl) $('font-link').href = CONFIG.fontUrl;
+    $('clock').hidden = CONFIG.clockStyle === 'analog';
+    $('analog').toggleAttribute('hidden', CONFIG.clockStyle !== 'analog');
+    $('hand-second').style.display = CONFIG.showSeconds ? '' : 'none';
+    $('background').style.filter = `blur(${CONFIG.blur}px) brightness(${CONFIG.brightness}%)`;
+  }
+
   function tick() {
-    const now = new Date();
-    $('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    $('date').textContent = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+    const now = new Date(), [h, m, s] = parts.format(now).split(':').map(Number);
+    $('clock').textContent = (CONFIG.showSeconds ? seconds : clock).format(now);
+    $('date').textContent = dateLabel.format(now);
+    const hand = (id, angle) => $(id).setAttribute('transform', `rotate(${angle} 50 50)`);
+    hand('hand-hour', (h % 12 + m / 60) * 30);
+    hand('hand-minute', (m + s / 60) * 6);
+    hand('hand-second', s * 6);
+    const key = h < 5 || h >= 22 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    $('greeting').textContent = CONFIG.greeting ? text(key) + (CONFIG.name ? `, ${CONFIG.name}` : '') : '';
   }
 
   function renderToday() {
-    const now = new Date(), key = dayKey(now), list = $('today-list');
+    const now = Date.now(), key = keyFormat.format(now), list = $('today-list');
     const today = events.filter(e => e.date <= key && e.end_date >= key);
-    const next = today.find(e => !e.all_day && startsAt(e) > now);
+    const next = today.find(e => !e.all_day && e.start_ts * 1000 > now);
     list.replaceChildren(...today.map(e => {
-      const ended = !e.all_day && e.date === e.end_date && new Date(`${e.end_date}T${e.end_time}:00`) < now;
+      const ended = !e.all_day && e.end_ts * 1000 < now;
       const row = make('li', 'event' + (ended ? ' past' : '') + (e === next ? ' next' : ''));
-      row.append(make('time', '', e.all_day ? 'All day' : e.time), make('strong', '', e.title));
+      row.append(make('time', '', e.all_day ? text('All day') : timeOf(e.start_ts)), bullet(e), make('strong', '', e.title));
       return row;
     }));
-    if (!today.length) list.append(make('li', 'empty', 'Nothing planned today'));
+    if (!today.length) list.append(make('li', 'empty', text('Nothing planned today')));
   }
 
   function renderWeek() {
-    const base = new Date(), list = $('week-list');
+    const todayKey = keyFormat.format(Date.now()), list = $('week-list');
     list.replaceChildren(...Array.from({ length: 7 }, (_, i) => {
-      const day = addDays(base, i + 1), key = dayKey(day);
-      const row = make('li', 'day'), heading = make('h3', '', day.toLocaleDateString([], { weekday: 'short' }));
-      heading.append(make('small', '', day.toLocaleDateString([], { day: 'numeric', month: 'short' })));
+      const day = addDays(todayKey, i + 1), key = day.toISOString().slice(0, 10);
+      const row = make('li', 'day'), heading = make('h3', '', weekdayLabel.format(day));
+      heading.append(make('small', '', dayLabel.format(day)));
       const items = make('div');
       const entries = events.filter(e => e.date <= key && e.end_date >= key);
       entries.forEach(e => {
         const item = make('div', 'item');
-        if (!e.all_day) item.append(make('time', '', e.time));
-        item.append(make('span', '', e.title));
+        item.append(bullet(e));
+        if (!e.all_day) item.append(make('time', '', timeOf(e.start_ts)));
+        item.append(make('span', 'title', e.title));
         items.append(item);
       });
       if (!entries.length) items.append(make('div', 'empty', '–'));
@@ -197,40 +278,105 @@
 
   function renderReminder() {
     const now = Date.now(), box = $('reminder');
-    const due = events.find(e => !e.all_day && !dismissed.has(e.date + e.time + e.title)
-      && startsAt(e) - now > 0 && startsAt(e) - now <= 30 * 60 * 1000);
+    const due = events.find(e => !e.all_day && !dismissed.has(e.title + e.start_ts)
+      && e.start_ts * 1000 - now > 0 && e.start_ts * 1000 - now <= 30 * 60 * 1000);
     box.hidden = !due;
     if (!due) return;
-    const small = make('small', '', `Starts at ${due.time} · tap to dismiss`);
+    const small = make('small', '', text('Starts at {time} · tap to dismiss').replace('{time}', timeOf(due.start_ts)));
     box.replaceChildren(make('strong', '', due.title), small);
-    box.onclick = () => { dismissed.add(due.date + due.time + due.title); renderReminder(); };
+    box.onclick = () => { dismissed.add(due.title + due.start_ts); renderReminder(); };
   }
 
   function render() { renderToday(); renderWeek(); renderReminder(); }
 
+  const getJson = async path => {
+    const response = await fetch(path, { cache: 'no-store' }).catch(() => null);
+    return response && response.ok ? response.json() : null;
+  };
+
   async function loadEvents() {
-    try {
-      const response = await fetch('/api/events', { cache: 'no-store' });
-      if (!response.ok) return;
-      events = (await response.json()).events;
-      render();
-    } catch { /* the last events stay visible while the server is unreachable */ }
+    const data = await getJson('/api/events');
+    if (!data) return;      // the last events stay visible while the server is unreachable
+    events = data.events;
+    render();
   }
 
-  tick(); render(); loadEvents();
+  async function loadWeather() {
+    const data = await getJson('/api/weather');
+    if (data) $('weather').textContent = data.enabled ? `${data.icon} ${data.temperature}° · ${data.text}` : '';
+  }
+
+  let shownPhoto = null;
+  async function loadBackground() {
+    const box = $('background'), credit = $('credit');
+    if (CONFIG.backgroundType === 'color') {
+      shownPhoto = null;
+      box.style.backgroundImage = 'none';
+      box.style.backgroundColor = CONFIG.backgroundColor;
+      box.classList.add('ready');
+      credit.replaceChildren();
+      return;
+    }
+    const orientation = matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
+    const photo = await getJson(`/api/background?orientation=${orientation}`);
+    if (!photo || !photo.url) { box.classList.add('ready'); return; }
+    if (photo.url === shownPhoto) return;
+    const image = new Image();
+    image.onload = () => {
+      shownPhoto = photo.url;
+      box.style.backgroundImage = `url("${photo.url}")`;
+      box.classList.add('ready');
+      const link = make('a', '', text('Photo by {name}').replace('{name}', photo.author));
+      link.href = photo.link;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      credit.replaceChildren(link);
+      if (photo.location) credit.append(` · ${photo.location}`);
+    };
+    image.src = photo.url;
+  }
+
+  applyConfig(); tick(); render(); loadEvents(); loadWeather(); loadBackground();
   setInterval(tick, 1000);
   setInterval(render, 60 * 1000);
   setInterval(loadEvents, 30 * 1000);
+  setInterval(loadWeather, 10 * 60 * 1000);
+  setInterval(loadBackground, 5 * 60 * 1000);
+  matchMedia('(orientation: portrait)').addEventListener('change', loadBackground);
 
-  {% if not public %}
+  {% if not public and not setup %}
+  const panel = $('panel');
+  const setPanel = open => {
+    if (open && !panel.getAttribute('src')) panel.src = $('gear').getAttribute('href');
+    panel.classList.toggle('open', open);
+    $('gear').classList.toggle('open', open);
+  };
+  const openPanel = () => setPanel(true);
+  $('gear').addEventListener('click', event => { event.preventDefault(); setPanel(!panel.classList.contains('open')); });
+  if (location.hash === '#settings') openPanel();
+  $('today').addEventListener('click', () => setPanel(false));
+  addEventListener('message', async event => {
+    if (event.origin !== location.origin) return;
+    if (event.data === 'close-settings') { setPanel(false); history.replaceState(null, '', location.pathname); }
+    if (event.data !== 'settings-changed') return;
+    const next = await getJson('/api/config');
+    if (!next) return;
+    const reload = next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks;
+    CONFIG = next;
+    if (reload) { location.hash = 'settings'; location.reload(); return; }
+    applyConfig(); tick(); render(); loadWeather(); loadBackground();
+  });
+  {% endif %}
+
+  {% if show_tasks %}
   const send = (path, method, body) => fetch(path, {
     method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body),
   });
 
   async function loadTasks() {
-    const response = await fetch('/api/tasks', { cache: 'no-store' }).catch(() => null);
-    if (!response || !response.ok) return;
-    const { tasks } = await response.json(), list = $('task-list');
+    const data = await getJson('/api/tasks');
+    if (!data) return;
+    const { tasks } = data, list = $('task-list');
     list.replaceChildren(...tasks.map(task => {
       const row = make('li', 'task' + (task.done ? ' done' : '')), label = make('label');
       const box = make('input');
@@ -240,12 +386,12 @@
       label.append(box, make('span', '', task.title));
       const remove = make('button', '', '×');
       remove.type = 'button';
-      remove.setAttribute('aria-label', 'Delete task');
+      remove.setAttribute('aria-label', text('Delete task'));
       remove.onclick = () => send(`/api/tasks/${task.id}`, 'DELETE').then(loadTasks);
       row.append(label, remove);
       return row;
     }));
-    if (!tasks.length) list.append(make('li', 'empty', 'No tasks'));
+    if (!tasks.length) list.append(make('li', 'empty', text('No tasks')));
   }
 
   $('task-form').addEventListener('submit', async event => {
