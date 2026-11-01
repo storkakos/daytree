@@ -272,8 +272,8 @@ dependencies give. After a change, update section 4 of this file with what you a
 - When you finish a task, run `tests/smoke_test.py`. It needs Linux.
 - Every bug gets a test: reproduce the fault first, then fix it.
 - A fix is finished only after it was checked in the real app. Say plainly what could not be checked.
-- Always check `README.md` after a change and update it when it no longer matches the app.
-- Add every visible change to `CHANGELOG.md` under `Unreleased` right away, not at release time.
+- Check `README.md` and `CHANGELOG.md` after every change, and correct them when they no longer match the app.
+  Add every visible change to `CHANGELOG.md` under `Unreleased` right away, not at release time.
 
 ### Releases
 
@@ -282,7 +282,7 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Release steps, in this order:
   1. Create the branch `release/x.y.z` from `dev`.
   2. Set `VERSION` in `app.py`, and move `Unreleased` in `CHANGELOG.md` to a section with the version and date.
-  3. Run `tests/smoke_test.py` and check `README.md`.
+  3. Run `tests/smoke_test.py`, and check `README.md` and the changelog section against the app.
   4. Merge by pull request into `dev`, then `dev` into `main`.
   5. Tag the merge commit on `main` with an annotated tag: `git tag -a vx.y.z -m "Release x.y.z"`.
   6. Publish a GitHub release. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release. From 1.0.0 on name it
