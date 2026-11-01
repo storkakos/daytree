@@ -355,10 +355,24 @@
     image.src = photo.url;
   }
 
+  // Picks up changes from other devices and app updates, so a kiosk never needs a manual reload
+  function useConfig(next) {
+    if (!next || JSON.stringify(next) === JSON.stringify(CONFIG)) return;
+    const reload = next.version !== CONFIG.version || next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks;
+    CONFIG = next;
+    if (reload) {
+      if ($('panel') && $('panel').classList.contains('open')) location.hash = 'settings';
+      location.reload();
+      return;
+    }
+    applyConfig(); tick(); render(); loadWeather(); loadBackground();
+  }
+
   applyConfig(); tick(); render(); loadEvents(); loadWeather(); loadBackground();
   setInterval(tick, 1000);
   setInterval(render, 60 * 1000);
   setInterval(loadEvents, 30 * 1000);
+  {% if not setup %}setInterval(async () => useConfig(await getJson('/api/config')), 30 * 1000);{% endif %}
   setInterval(loadWeather, 10 * 60 * 1000);
   setInterval(loadBackground, 5 * 60 * 1000);
   matchMedia('(orientation: portrait)').addEventListener('change', loadBackground);
@@ -378,12 +392,7 @@
     if (event.origin !== location.origin) return;
     if (event.data === 'close-settings') { setPanel(false); history.replaceState(null, '', location.pathname); }
     if (event.data !== 'settings-changed') return;
-    const next = await getJson('/api/config');
-    if (!next) return;
-    const reload = next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks;
-    CONFIG = next;
-    if (reload) { location.hash = 'settings'; location.reload(); return; }
-    applyConfig(); tick(); render(); loadWeather(); loadBackground();
+    useConfig(await getJson('/api/config'));
   });
   {% endif %}
 

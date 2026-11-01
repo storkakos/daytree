@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- The homepage takes over settings changed on another device within 30 seconds and reloads itself after an app update.
+
 ### Fixed
 
 - The homepage stayed empty on older browsers (Chromium 56 and similar).

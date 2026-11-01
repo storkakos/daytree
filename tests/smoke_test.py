@@ -186,6 +186,7 @@ with mock.patch.object(A, "fetch_json", return_value={"current": {"temperature_2
     w = c.get("/api/weather", headers={"Accept-Language": "de"}).get_json()
 assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "🌧️", "city": "Rendsburg"}
 cfg = c.get("/api/config").get_json()
+assert cfg["version"] == A.VERSION
 assert cfg["name"] == "Sam" and cfg["greeting"] is True
 assert c.get("/api/config", environ_overrides={"SERVER_PORT": "8081"}).status_code == 404   # mode off
 for bad in ({"background_color": "red"}, {"font_family": "x"}, {"background_every": "x"}, {"clock_size": "abc"}):

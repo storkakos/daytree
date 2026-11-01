@@ -567,6 +567,7 @@ def display_config():
         "fontSize": settings["font_size"],
         "fontWeight": settings["font_weight"],
         "text": {t: _(t) for t in display_config_strings()},
+        "version": VERSION,
     }
 
 
