@@ -186,6 +186,7 @@ with mock.patch.object(A, "fetch_json", return_value={"current": {"temperature_2
     w = c.get("/api/weather", headers={"Accept-Language": "de"}).get_json()
 assert w == {"enabled": True, "temperature": 10, "text": "Regen", "icon": "🌧️", "city": "Rendsburg"}
 cfg = c.get("/api/config").get_json()
+assert cfg["version"] == A.VERSION
 assert cfg["name"] == "Sam" and cfg["greeting"] is True
 assert c.get("/api/config", environ_overrides={"SERVER_PORT": "8081"}).status_code == 404   # mode off
 for bad in ({"background_color": "red"}, {"font_family": "x"}, {"background_every": "x"}, {"clock_size": "abc"}):
@@ -249,6 +250,11 @@ assert tok.encode() in c.get("/settings").data                           # inter
 assert c.get("/api/events", **PUB).status_code == 200
 A.settings["greeting_name"] = "Private Name"
 assert c.get("/api/config", **PUB).get_json()["name"] == "" and b"Private Name" not in c.get("/", **PUB).data
+page = c.get("/kiosk").data
+assert b"Private Name" in page and b'id="gear"' not in page and b'id="panel"' not in page
+assert b'id="tasks"' in page and b'id="task-form"' not in page and b"box.disabled = true" in page
+public_page = c.get("/kiosk", **PUB).data
+assert b"Private Name" not in public_page and b'id="tasks"' not in public_page
 A.settings["greeting_name"] = ""
 assert c.post("/api/background/refresh", headers=H, **PUB).status_code == 404
 assert c.get("/api/tasks", **PUB).status_code == 404
