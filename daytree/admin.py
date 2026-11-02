@@ -9,7 +9,7 @@ from icalendar import Calendar
 
 from daytree import VERSION, auth, display, sync, tunnel
 from daytree.auth import PUBLIC_PORT
-from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_MODES, STEP_MINUTES, WASTE_FILE,
+from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
 from daytree.i18n import _, hours
 
@@ -215,7 +215,7 @@ def settings_waste():
 
 @bp.post("/settings/tunnel")
 def settings_tunnel():
-    """Cloudflare tunnel and exposure mode."""
+    """Cloudflare tunnel and the areas it may reach."""
     raw = request.form.get("tunnel_token", "").strip()
     if raw:
         m = tunnel.TOKEN_RE.search(raw)   # also accepts a pasted "cloudflared ... --token XYZ" command
@@ -232,8 +232,8 @@ def settings_tunnel():
         return redirect(url_for("admin.settings_page"))
     settings["public_hostname"] = host
 
-    mode = request.form.get("public_mode", "off")
-    settings["public_mode"] = mode if mode in PUBLIC_MODES else "off"
+    chosen = request.form.getlist("public_areas")
+    settings["public_areas"] = [area for area in PUBLIC_AREAS if area in chosen]
 
     want = bool(request.form.get("tunnel_enabled"))
     if want and not settings["tunnel_token"]:

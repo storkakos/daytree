@@ -21,7 +21,7 @@ TASKS_FILE = DATA / "tasks.enc"            # fully encrypted (Fernet)
 LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, then deleted
 
 MIN_MINUTES, MAX_MINUTES, STEP_MINUTES = 30, 1440, 30
-PUBLIC_MODES = ("off", "ics", "dashboard")
+PUBLIC_AREAS = ("ics", "homepage", "api")                  # what the tunnel may reach, chosen in the settings
 SECRET_KEYS = ("password", "tunnel_token", "lock_hash", "api_tokens")   # never passed to templates as they are
 LANGUAGES = ("en", "de")
 DEFAULT_TZ = os.environ.get("TZ", "")                      # from docker-compose / .env
@@ -76,7 +76,7 @@ DEFAULTS = {
     "calendars": [],            # [{"name": ..., "code": ...}] from the last login
     "interval_minutes": 180,
     "token": "",                # token embedded in the ICS URL
-    "public_mode": "off",       # off | ics | dashboard (applies to traffic via the tunnel / port 8081)
+    "public_areas": [],         # subset of PUBLIC_AREAS for traffic via the tunnel / port 8081; empty = only /ping
     "public_hostname": "",
     "tunnel_enabled": False,
     "tunnel_token": "",
@@ -136,8 +136,10 @@ def load_settings():
         except Exception:
             pass
     s["interval_minutes"] = clamp(s["interval_minutes"])
-    if s["public_mode"] not in PUBLIC_MODES:
-        s["public_mode"] = "off"
+    if "public_mode" in s:      # up to 0.15: one mode instead of areas
+        s["public_areas"] = {"ics": ["ics"], "dashboard": ["ics", "homepage"]}.get(s.pop("public_mode"), [])
+        dirty = True
+    s["public_areas"] = [a for a in PUBLIC_AREAS if a in s["public_areas"]]
     if not s["token"]:
         s["token"] = secrets.token_urlsafe(24)
         dirty = True

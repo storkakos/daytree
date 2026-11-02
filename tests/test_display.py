@@ -153,7 +153,7 @@ def test_pages_are_never_cached(client):
 
 
 def test_kiosk_is_read_only(client):
-    core.settings.update(greeting_name="Private Name", public_mode="dashboard")
+    core.settings.update(greeting_name="Private Name", public_areas=["homepage"])
     page = client.get("/kiosk").data
     assert b"Private Name" in page and b'id="gear"' not in page and b'id="panel"' not in page
     assert b'id="tasks"' in page and b'id="task-form"' not in page and b"box.disabled = true" in page

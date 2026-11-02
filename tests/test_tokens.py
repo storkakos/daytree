@@ -83,8 +83,19 @@ def test_revoke(client):
 
 def test_tokens_open_nothing_from_outside(client):
     value = create(client, "Script", "write")
-    core.settings["public_mode"] = "dashboard"
+    core.settings["public_areas"] = ["ics", "homepage"]
     assert client.get("/api/tasks", headers=bearer(value), environ_overrides=PUBLIC).status_code == 404
     assert client.post("/api/tasks", json={"title": "x"}, headers=bearer(value), environ_overrides=PUBLIC).status_code == 404
-    core.settings["public_mode"] = "off"
+    core.settings["public_areas"] = []
     assert client.get("/api/events", headers=bearer(value), environ_overrides=PUBLIC).status_code == 404
+
+
+def test_api_area_opens_the_api_through_the_tunnel(client):
+    value = create(client, "Phone", "write")
+    core.settings["public_areas"] = ["api"]
+    r = client.post("/api/tasks", json={"title": "From outside"}, headers=bearer(value), environ_overrides=PUBLIC)
+    assert r.status_code == 201
+    tasks = client.get("/api/tasks", headers=bearer(value), environ_overrides=PUBLIC).get_json()["tasks"]
+    assert "From outside" in [t["title"] for t in tasks]
+    assert client.get("/api/tasks", environ_overrides=PUBLIC).status_code == 401
+    assert client.get("/", headers=bearer(value), environ_overrides=PUBLIC).status_code == 404
