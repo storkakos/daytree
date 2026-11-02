@@ -11,13 +11,13 @@
       {% if state.last_success %}<div class="row"><span class="label">{{ _("Last success") }}</span><span class="value">{{ state.last_success[:16].replace('T',' ') }} UTC</span></div>{% endif %}
       <div class="row"><span class="label">{{ _("Events") }}</span><span class="value">{{ state.events }}</span></div>
       <div class="row"><span class="label">{{ _("Next sync") }}</span><span class="value">{{ _("Every {interval}").format(interval=s.interval_label) }}{% if next_run %} · {{ next_run }}{% endif %}</span></div>
-      <form method="post" action="{{ url_for('sync_now') }}">
+      <form method="post" action="{{ url_for('admin.sync_now') }}">
         <button class="action" {{ 'disabled' if running }}>{{ _("Running …") if running else _("Sync now") }}</button>
       </form>
     </div>
   </section>
 
-  <form method="post" action="{{ url_for('settings_login') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_login') }}" class="group">
     <h2>{{ _("TimeTree account") }}</h2>
     <div class="card">
       <div class="row"><label for="email">{{ _("E-mail") }}</label><input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required></div>
@@ -27,7 +27,7 @@
     <p>{{ _("A TimeTree account with an e-mail address and password is required. Logins through Google or Apple only have no password.") }}</p>
   </form>
 
-  <form method="post" action="{{ url_for('settings_save') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_save') }}" class="group">
     <h2>{{ _("Calendar and sync") }}</h2>
     <div class="card">
       <div class="row">
@@ -59,7 +59,7 @@
     <p>{{ _("Very short intervals may get you rate-limited by TimeTree.") }}</p>
   </form>
 
-  <form method="post" action="{{ url_for('settings_display') }}" id="display" autocomplete="off">
+  <form method="post" action="{{ url_for('admin.settings_display') }}" id="display" autocomplete="off">
     <section class="group">
       <h2>{{ _("Display") }}</h2>
       <div class="card">
@@ -217,7 +217,7 @@
     <noscript><button class="action">{{ _("Save") }}</button></noscript>
   </form>
 
-  <form method="post" action="{{ url_for('settings_waste') }}" enctype="multipart/form-data" class="group" id="waste-form">
+  <form method="post" action="{{ url_for('admin.settings_waste') }}" enctype="multipart/form-data" class="group" id="waste-form">
     <h2>{{ _("Waste collection") }}</h2>
     <div class="card">
       <div class="row">
@@ -255,7 +255,7 @@
         <div class="row" style="padding:0;min-height:0"><input class="mono" id="ics-public" readonly value="{{ ics_pub }}"><button type="button" class="copy" data-copy="ics-public">{{ _("Copy") }}</button></div>
       </div>
       {% endif %}
-      <form method="post" action="{{ url_for('settings_save') }}" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('The current URL stops working. Generate a new token?') }}">
+      <form method="post" action="{{ url_for('admin.settings_save') }}" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('The current URL stops working. Generate a new token?') }}">
         <input type="hidden" name="interval" value="{{ s.interval_minutes }}">
         <input type="hidden" name="calendar_code" value="{{ s.calendar_code }}">
         <input type="hidden" name="new_token" value="1">
@@ -265,7 +265,7 @@
     <p>{{ _("Add this URL to your calendar app. Outlook on the web, Microsoft 365 and Google Calendar need the public URL.") }}</p>
   </section>
 
-  <form method="post" action="{{ url_for('settings_tunnel') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_tunnel') }}" class="group">
     <h2>{{ _("Cloudflare tunnel") }}</h2>
     <div class="card">
       <div class="row"><span class="label">{{ _("Status") }}</span><span class="value">{{ _(tunnel.status|capitalize) }}{% if tunnel.error %} · {{ _(tunnel.error) }}{% endif %}</span></div>

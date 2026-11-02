@@ -25,7 +25,8 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared
-COPY app.py i18n.py ./
+COPY app.py ./
+COPY daytree ./daytree
 COPY templates ./templates
 COPY static ./static
 

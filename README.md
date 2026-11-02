@@ -237,17 +237,17 @@ Named volumes let the non-root container user (uid 1000) write. If you switch to
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-python tests/smoke_test.py
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
 docker exec -i daytree python - < tests/port_check.py
 ```
 
 | Test | Requirements | Covers |
 |---|---|---|
-| `tests/smoke_test.py` | Linux | Encryption, settings, exposure modes, ICS repair and tunnel handling. TimeTree and `cloudflared` are mocked. |
+| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, exposure mode and token. TimeTree, `cloudflared` and the web services are mocked. |
 | `tests/port_check.py` | Running container, mode *Nothing* or *ICS file only* | Internal and public port detection against real gunicorn. |
 
-Both print `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
+`port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.
 
 | Branch | Purpose |
