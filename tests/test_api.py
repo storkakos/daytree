@@ -1,10 +1,11 @@
 """The REST API: calendars with their events, and tasks one by one."""
+import re
 from datetime import date, timedelta
 
 import pytest
 from conftest import ORIGIN
 
-from daytree import core
+from daytree import core, sync
 
 TODAY = date.today()
 
@@ -76,3 +77,25 @@ def test_task_bodies_validated(client, method, body):
     assert getattr(client, method)(url, json=body, headers=ORIGIN).status_code == 400
     assert client.get(f"/api/tasks/{task['id']}").get_json() == task                    # unchanged
     client.delete(f"/api/tasks/{task['id']}", headers=ORIGIN)
+
+
+def write_token(client, access="write"):
+    r = client.post("/settings/tokens", data={"name": "Automation", "access": access}, headers=ORIGIN)
+    return {"Authorization": "Bearer " + re.search(r'id="new-token" readonly value="(dt_[^"]+)"', r.data.decode()).group(1)}
+
+
+def test_sync_needs_a_write_token(client, monkeypatch):
+    started = []
+    monkeypatch.setattr(sync, "start_in_background", lambda: started.append(True))
+    assert client.post("/api/sync", headers=ORIGIN).status_code == 401           # same site is not enough
+    assert client.post("/api/sync", headers=write_token(client, "read")).status_code == 403
+    r = client.post("/api/sync", headers=write_token(client))
+    assert r.status_code == 202 and r.get_json() == {"running": True, "started": True} and started == [True]
+
+
+def test_sync_already_running(client, monkeypatch):
+    monkeypatch.setattr(sync, "start_in_background", lambda: None)
+    headers = write_token(client)
+    with sync.lock:
+        r = client.post("/api/sync", headers=headers)
+    assert r.status_code == 409 and r.get_json()["started"] is False

@@ -144,6 +144,17 @@ def api_task_delete(task_id):
     return "", 204
 
 
+# ---------------------------------------------------------------- sync
+@bp.post("/api/sync")
+def api_sync():
+    """Start a sync without waiting for it. Always needs a read-write token (see auth.TOKEN_ONLY_PATHS)."""
+    if sync.lock.locked():
+        return jsonify(running=True, started=False), 409
+    sync.reset_timer()
+    sync.start_in_background()
+    return jsonify(running=True, started=True), 202
+
+
 # ---------------------------------------------------------------- status, health check, ICS feed
 @bp.route("/api/status")
 def status():
