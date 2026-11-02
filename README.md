@@ -269,11 +269,11 @@ verification status.
 
 | Branch | Purpose |
 |---|---|
-| `main` | Released versions only. Every release is a tagged commit. |
+| `main` | Released versions only. Each one has a GitHub release. |
 | `dev` | Integration branch. All work starts here, and pull requests target it. |
 
-Versions follow [Semantic Versioning](https://semver.org/). To release, record the changes in
-[`CHANGELOG.md`](CHANGELOG.md), merge `dev` into `main` with a pull request, and tag the result.
+Versions follow [Semantic Versioning](https://semver.org/). Every change users notice gets its own version on `dev`,
+with a section in [`CHANGELOG.md`](CHANGELOG.md) and a tag. Merging `dev` into `main` publishes them as a release.
 
 ## Credits
 

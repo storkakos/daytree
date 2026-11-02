@@ -291,7 +291,8 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Settle open questions in an issue before building it.
 - Use one branch per issue, for example `feature/19-waste-bins`. It goes by pull request into `dev`, then `dev` goes
   into `main`. The pull request closes the issue with `Closes #19`.
-- The owner approves every merge.
+- A pull request into `dev` is merged as soon as its checks pass, so the owner can test it on the test box. Merges
+  into `main` and GitHub releases need the owner's approval.
 
 ### Quality
 
@@ -303,16 +304,22 @@ dependencies give. After a change, update section 4 of this file with what you a
 
 ### Releases
 
-- Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
-  and very large changes the first number (`+.x.x`). Changes to text only get no release.
-- Release steps, in this order:
-  1. Create the branch `release/x.y.z` from `dev`.
-  2. Set `VERSION` in `daytree/__init__.py`, and move `Unreleased` in `CHANGELOG.md` to a section with the version and date.
+- Every issue that changes what users get raises the version in its own branch: bug fixes raise the last number
+  (`x.x.+`), new functions the middle number (`x.+.x`) and very large changes the first number (`+.x.x`). Refactoring,
+  tests, CI and changes to text only raise nothing; their notes, if any, wait under `Unreleased` for the next version.
+- Steps in the issue's branch, before the pull request:
+  1. Set `VERSION` in `daytree/__init__.py`.
+  2. Move the notes under `Unreleased` in `CHANGELOG.md` to a section with the version and date, start it with one
+     sentence for users, and add the compare link.
   3. Run `pytest`, and check `README.md` and the changelog section against the app.
-  4. Merge by pull request into `dev`, then `dev` into `main`.
-  5. Tag the merge commit on `main` with an annotated tag: `git tag -a vx.y.z -m "Release x.y.z"`.
-  6. Publish a GitHub release. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release. From 1.0.0 on name it
-     `vx.y.z` and publish it as a normal release. Use the changelog section as the text and add upgrade notes.
+- After the pull request is merged into `dev`, tag the merge commit with an annotated tag and push it:
+  `git tag -a vx.y.z -m "Release x.y.z"`.
+- `dev` goes into `main` only when the owner says so. Then:
+  1. Run `pytest`, and check `README.md` and `CHANGELOG.md` against the app.
+  2. Merge `dev` into `main` by pull request.
+  3. Publish a GitHub release for the newest version. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release.
+     From 1.0.0 on name it `vx.y.z` and publish it as a normal release. Use every changelog section since the last
+     GitHub release as the text, and add upgrade notes.
 
 ---
 
