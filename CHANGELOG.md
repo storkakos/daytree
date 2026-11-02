@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-02
+
+The chosen option of a switch with several choices is easy to see again.
+
+### Fixed
+
+- In dark mode, the chosen option of controls such as *Read only* / *Read and write* or the clock style was hard to
+  tell apart. It is now blue with white text in both modes.
+
 ## [0.15.0] - 2026-11-02
 
 Apps and scripts can use the API with their own tokens.
@@ -130,7 +139,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.15.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.15.1...dev
+[0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/storkakos/daytree/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/storkakos/daytree/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/storkakos/daytree/compare/v0.12.0...v0.13.0
