@@ -10,6 +10,7 @@ from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from daytree import admin, api, auth, display, sync, tunnel
+from daytree.core import settings
 from daytree.i18n import _, language
 
 ROOT = Path(__file__).resolve().parent.parent      # templates/ and static/ live next to the package
@@ -26,7 +27,9 @@ app.before_request(auth.guard)
 
 @app.context_processor
 def _inject():
-    return {"public": auth.is_public(), "_": _, "lang": language()}
+    # "light" or "dark" fixes the look; an empty class follows the device
+    theme = settings["appearance"] if settings["appearance"] in ("light", "dark") else ""
+    return {"public": auth.is_public(), "_": _, "lang": language(), "theme": theme}
 
 
 @app.after_request

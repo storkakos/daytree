@@ -186,6 +186,11 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: appearance
+    "Appearance": "Darstellung",
+    "Automatic": "Automatisch",
+    "Light": "Hell",
+    "Dark": "Dunkel",
     # Settings: backup
     "Backup": "Sicherung",
     "Download backup": "Sicherung herunterladen",

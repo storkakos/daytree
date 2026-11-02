@@ -85,6 +85,7 @@ DEFAULTS = {
     "notify_format": "ntfy",    # ntfy | json
     "api_tokens": [],           # [{"id", "name", "hash" (SHA-256), "write", "created", "last_used"}]
     "language": "auto",         # auto | en | de
+    "appearance": "auto",       # auto | light | dark, for the settings pages and the setup popup
     "timezone": "",             # empty = DEFAULT_TZ
     "time_format": "24",        # 24 | 12
     "date_style": "long",       # long | numeric

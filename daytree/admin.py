@@ -129,6 +129,7 @@ def settings_display():
     new = {
         "timezone": zone, "background_color": color,
         "language": _choice("language", ("auto", *LANGUAGES)),
+        "appearance": _choice("appearance", ("auto", "light", "dark")),
         "time_format": _choice("time_format", ("24", "12")),
         "date_style": _choice("date_style", ("long", "numeric")),
         "clock_style": _choice("clock_style", ("digital", "analog")),

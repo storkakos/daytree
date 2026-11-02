@@ -72,6 +72,14 @@
           </select>
         </div>
         <div class="row">
+          <span class="label">{{ _("Appearance") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="appearance" value="auto" {{ 'checked' if s.appearance == 'auto' }}><span>{{ _("Automatic") }}</span></label>
+            <label><input type="radio" name="appearance" value="light" {{ 'checked' if s.appearance == 'light' }}><span>{{ _("Light") }}</span></label>
+            <label><input type="radio" name="appearance" value="dark" {{ 'checked' if s.appearance == 'dark' }}><span>{{ _("Dark") }}</span></label>
+          </div>
+        </div>
+        <div class="row">
           <label for="tasks_enabled">{{ _("Show tasks on the homepage") }}</label>
           <span class="switch"><input id="tasks_enabled" type="checkbox" name="tasks_enabled" value="1" {{ 'checked' if s.tasks_enabled }}><span></span></span>
         </div>
@@ -452,6 +460,11 @@
     else saveLater(wasteForm);
   });
   form.addEventListener('change', autosave);
+  // The look changes at once, before the save comes back
+  form.querySelectorAll('input[name=appearance]').forEach(input => input.addEventListener('change', () => {
+    document.documentElement.className = input.value === 'auto' ? '' : input.value;
+    if (top !== self) document.documentElement.classList.add('embedded');
+  }));
   form.addEventListener('input', event => {
     if (event.target.type !== 'range') return;
     clearTimeout(timer);
