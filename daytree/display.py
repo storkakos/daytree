@@ -5,7 +5,7 @@ import random
 import time
 import urllib.parse
 import urllib.request
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import recurring_ical_events
 from cryptography.fernet import InvalidToken
@@ -18,6 +18,7 @@ from daytree.core import (BACKGROUND_FILE, DEFAULTS, LANGUAGES, SECRET_KEYS, WAS
                           read_encrypted, settings)
 from daytree.i18n import _, hours, language
 from daytree.sync import as_json, local_time, occurrences
+from daytree.sync import state as sync_state
 
 bp = Blueprint("display", __name__)
 
@@ -51,12 +52,13 @@ def view():
     v["has_password"] = bool(settings["password"])
     v["has_tunnel_token"] = bool(settings["tunnel_token"])
     v["has_lock_password"] = bool(settings["lock_hash"])
+    v["has_notify_url"] = bool(settings["notify_url"])
     v["interval_label"] = hours(settings["interval_minutes"])
     return v
 
 
 def display_config_strings():
-    return ("All day", "Nothing planned today", "No tasks", "Delete task", "Starts at {time} · tap to dismiss",
+    return ("No connection to Daytree", "All day", "Nothing planned today", "No tasks", "Delete task", "Starts at {time} · tap to dismiss",
             "Good morning", "Good afternoon", "Good evening", "Good night", "Photo by {name}")
 
 
@@ -122,7 +124,26 @@ def api_config():
 @bp.get("/api/events")
 def api_events():
     today = date.today()
-    return jsonify(events=as_json(occurrences(today, today + timedelta(days=8))))
+    return jsonify(events=as_json(occurrences(today, today + timedelta(days=8))), stale=freshness())
+
+
+def freshness():
+    """A note for the homepage when its events may be out of date: the last sync failed, or the last success is older
+    than two sync intervals. Empty while everything is fresh."""
+    if needs_setup():
+        return ""
+    last = sync_state["last_success"]
+    if last is None:
+        return _("Calendar not updated yet") if sync_state["ok"] is False else ""
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+    if sync_state["ok"] is not False and age < settings["interval_minutes"] * 120 + 1800:
+        return ""
+    minutes = max(1, int(age // 60))
+    if minutes < 120:
+        return _("Last updated {count} min ago").format(count=minutes)
+    if minutes < 48 * 60:
+        return _("Last updated {count} h ago").format(count=minutes // 60)
+    return _("Last updated {count} days ago").format(count=minutes // 1440)
 
 
 # ---------------------------------------------------------------- waste collection

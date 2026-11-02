@@ -242,6 +242,29 @@
     <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin next to the day.") }}</p>
   </form>
 
+  <form method="post" action="{{ url_for('admin.settings_notify') }}" class="group">
+    <h2>{{ _("Notifications") }}</h2>
+    <div class="card">
+      <div class="row"><label for="notify_url">{{ _("Address") }}</label><input id="notify_url" name="notify_url" type="password" autocomplete="off" placeholder="{{ _('Address is stored') if s.has_notify_url else 'https://ntfy.sh/…' }}"></div>
+      <div class="row">
+        <span class="label">{{ _("Format") }}</span>
+        <div class="segmented">
+          <label><input type="radio" name="notify_format" value="ntfy" {{ 'checked' if s.notify_format == 'ntfy' }}><span>ntfy</span></label>
+          <label><input type="radio" name="notify_format" value="json" {{ 'checked' if s.notify_format == 'json' }}><span>JSON</span></label>
+        </div>
+      </div>
+      {% if s.has_notify_url %}
+      <div class="row">
+        <label for="clear_notify">{{ _("Delete the stored address") }}</label>
+        <span class="switch"><input id="clear_notify" type="checkbox" name="clear_notify" value="1"><span></span></span>
+      </div>
+      {% endif %}
+      <button class="action">{{ _("Save") }}</button>
+      {% if s.has_notify_url %}<button class="action" name="test" value="1">{{ _("Send test message") }}</button>{% endif %}
+    </div>
+    <p>{{ _("Daytree sends one message when syncing stops working and one when it works again. Use an ntfy topic, or a webhook that takes JSON with title and message.") }}</p>
+  </form>
+
   <section class="group">
     <h2>{{ _("Calendar subscription") }}</h2>
     <div class="card">
