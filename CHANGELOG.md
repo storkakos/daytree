@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-02
+
+The settings can stay light or dark, whatever the device does.
+
+### Added
+
+- **Appearance** in the settings: automatic, light or dark. It applies to the settings, the padlock page and the
+  setup window, and changes at once. The homepage keeps its dark glass look.
+
+### Changed
+
+- The setup window and the settings panel on the homepage are dark when the device or the setting is.
+
 ## [0.23.0] - 2026-11-02
 
 Daytree can be installed without building it.
@@ -227,7 +240,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.23.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.0...dev
+[0.24.0]: https://github.com/storkakos/daytree/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/storkakos/daytree/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/storkakos/daytree/compare/v0.20.0...v0.21.0

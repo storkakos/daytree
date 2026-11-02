@@ -59,6 +59,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Clock and date:** digital or analog, 12 or 24 hours, seconds, size, time zone and date style.
 - **Font:** family, size and weight.
 - **Language:** German and English, following your browser or set by you.
+- **Appearance:** light, dark or following the device, for the settings and the setup window.
 
 ### Under the hood
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" class="{{ theme }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#14181d">
 <title>{{ s.calendar_name or 'Daytree' }}</title>
 <style>
-  :root { --glass:rgba(22,24,28,.38); --glass-line:rgba(255,255,255,.14); --fg:#fff; --muted:rgba(255,255,255,.72); --line:rgba(255,255,255,.15); --accent:#7cc7ff; --solid:#fff; --solid-fg:#1c1c1e; --solid-muted:#6c6c70; --blue:#007aff;
+  :root { --glass:rgba(22,24,28,.38); --glass-line:rgba(255,255,255,.14); --fg:#fff; --muted:rgba(255,255,255,.72); --line:rgba(255,255,255,.15); --accent:#7cc7ff; --solid:#fff; --solid-fg:#1c1c1e; --solid-muted:#6c6c70; --solid-field:#f2f2f7; --panel:#f2f2f7; --blue:#007aff;
           --font:system-ui,sans-serif; --weight:300; --scale:1; --clock-scale:1; }
   * { box-sizing:border-box; }
   html { font-size:calc(2.1vmin * var(--scale)); }
@@ -119,14 +119,18 @@
   #reminder small { display:block; color:var(--muted); }
   #credit { position:fixed; top:.6rem; left:1.25rem; max-width:30%; font-size:.75rem; color:var(--muted); }
   #credit a { color:inherit; text-decoration:none; }
-  #panel { position:fixed; top:0; right:0; height:100%; z-index:8; width:26rem; min-width:380px; max-width:100vw; border:0; background:#f2f2f7; box-shadow:-.5rem 0 3rem rgba(0,0,0,.4); transform:translateX(105%); transition:transform .28s ease; visibility:hidden; }
+  #panel { position:fixed; top:0; right:0; height:100%; z-index:8; width:26rem; min-width:380px; max-width:100vw; border:0; background:var(--panel); box-shadow:-.5rem 0 3rem rgba(0,0,0,.4); transform:translateX(105%); transition:transform .28s ease; visibility:hidden; }
   #panel.open { transform:none; visibility:visible; }
   #setup { position:fixed; top:0; right:0; bottom:0; left:0; z-index:10; display:flex; padding:1rem; overflow-y:auto; background:rgba(0,0,0,.4); -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px); text-shadow:none; }
   .dialog { margin:auto; width:30rem; max-width:100%; background:var(--solid); color:var(--solid-fg); border-radius:1.2rem; padding:1.6rem; box-shadow:0 1rem 4rem rgba(0,0,0,.27); }
   .dialog h1 { margin:0 0 .25rem; font-size:1.6rem; font-weight:700; }
   .dialog p { margin:0 0 .75rem; color:var(--solid-muted); }
   .dialog label { display:block; margin:.75rem 0 .25rem; font-size:.85rem; color:var(--solid-muted); }
-  .dialog input, .dialog select { background:#f2f2f7; color:var(--solid-fg); }
+  .dialog input, .dialog select { background:var(--solid-field); color:var(--solid-fg); }
+  /* The setup popup and the settings panel follow the appearance setting; the homepage itself stays dark glass */
+  {% set dark_solid %}--solid:#1c1c1e; --solid-fg:#fff; --solid-muted:#98989f; --solid-field:#2c2c2e; --panel:#000;{% endset %}
+  @media (prefers-color-scheme: dark) { :root:not(.light) { {{ dark_solid }} } }
+  :root.dark { {{ dark_solid }} }
   .dialog .button { width:100%; margin-top:1rem; background:var(--blue); color:#fff; }
   .step { font-size:.85rem; color:var(--solid-muted); }
   .msg { padding:.6rem .8rem; border-radius:.7rem; margin-bottom:.5rem; color:#fff; background:#34c759; }
