@@ -23,7 +23,7 @@ With tasks, reminders, a weather forecast, waste collection and beautiful photo 
 
 <br>
 
-<img src="docs/homepage-landscape.jpg" alt="Daytree homepage with today's agenda, the next 7 days and tasks on a photo background" width="100%">
+<img src="docs/homepage-landscape.jpg" alt="Daytree homepage with a weather forecast, today's agenda, the next 7 days, waste collection and tasks on a photo background" width="100%">
 
 </div>
 
