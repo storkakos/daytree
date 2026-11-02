@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-02
+
+You choose exactly what the tunnel shares.
+
+### Changed
+
+- The tunnel settings offer checkboxes instead of three modes: ICS feed, homepage (read-only) and API, in any
+  combination. Your previous choice is taken over.
+- A shared homepage no longer makes `/api/status` public, since the homepage does not use it.
+
+### Added
+
+- The API can be shared through the tunnel. It then needs an API token for every request.
+
 ## [0.15.1] - 2026-11-02
 
 The chosen option of a switch with several choices is easy to see again.
@@ -139,7 +153,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.15.1...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.16.0...dev
+[0.16.0]: https://github.com/storkakos/daytree/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/storkakos/daytree/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/storkakos/daytree/compare/v0.13.0...v0.14.0

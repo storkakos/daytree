@@ -64,7 +64,8 @@ Everything is behind the gear icon, saved immediately and shown live:
 
 - **Calendar sync:** imports one TimeTree calendar every 0.5 to 24 hours (default: 3 hours).
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
-- **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
+- **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
+  the API, or any mix.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
@@ -128,16 +129,17 @@ The tunnel is optional and runs inside the container.
    You can also copy the whole install command, and the app extracts the token.
 2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8081`.
 3. In the settings, under **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
-   hostname. Then choose what is reachable and save.
+   hostname. Then tick what the tunnel may reach and save.
 
-| Mode | Reachable through the tunnel |
+| Area | Reachable through the tunnel |
 |---|---|
-| **Nothing** (default) | `/ping` only |
-| **ICS file only** | `/calendar.ics?token=…` and `/ping` |
-| **Homepage (read-only) + ICS** | The homepage without tasks and settings, the ICS feed and `/ping` |
+| **ICS feed** | `/calendar.ics?token=…` |
+| **Homepage (read-only)** | The homepage and `/kiosk` without tasks and settings, and the data they show |
+| **API** | `/api/…` with an [API token](#api). Read-only tokens can only read. |
 
-Settings, tasks and **Sync now** are never reachable through the tunnel. The app enforces the mode on port 8081, and
-for any request that carries Cloudflare headers.
+Tick any combination. With nothing ticked (the default) only `/ping` answers. Settings and **Sync now** are never
+reachable through the tunnel. The app enforces the areas on port 8081, and for any request that carries Cloudflare
+headers.
 
 > [!WARNING]
 > The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
@@ -190,8 +192,8 @@ curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      
 | `/api/events` | `GET` | Events of today and the next 7 days |
 | `/api/status` | `GET` | Last sync and tunnel status |
 
-Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Tokens do not
-open anything through the Cloudflare tunnel.
+Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Through the
+Cloudflare tunnel the API is reachable only if you tick **API** under *Reachable through the tunnel*.
 
 ## Configuration
 
@@ -286,8 +288,8 @@ docker exec -i daytree python - < tests/port_check.py
 
 | Test | Requirements | Covers |
 |---|---|---|
-| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, exposure mode and token. TimeTree, `cloudflared` and the web services are mocked. |
-| `tests/port_check.py` | Running container, mode *Nothing* or *ICS file only* | Internal and public port detection against real gunicorn. |
+| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, shared area and token. TimeTree, `cloudflared` and the web services are mocked. |
+| `tests/port_check.py` | Running container, nothing or only the ICS feed shared | Internal and public port detection against real gunicorn. |
 
 `port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.

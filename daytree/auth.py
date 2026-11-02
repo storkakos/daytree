@@ -1,4 +1,4 @@
-"""Access control: the internal and the public side, the exposure modes, CSRF, API and ICS tokens, the settings padlock."""
+"""Access control: the internal and the public side, the shared areas, CSRF, API and ICS tokens, the settings padlock."""
 import hashlib
 import hmac
 import os
@@ -13,6 +13,8 @@ from flask import Response, abort, render_template, request
 from daytree.core import needs_setup, save_settings, settings
 
 PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8081"))   # port the Cloudflare tunnel points to
+# What the homepage area opens: its pages, the reads it makes and its static files. No tasks, settings or status.
+HOMEPAGE_PATHS = ("/", "/kiosk", "/api/config", "/api/events", "/api/weather", "/api/waste", "/api/background")
 SETTINGS_LOCK = os.environ.get("SETTINGS_LOCK", "false").strip().lower() in ("1", "true", "yes", "on")
 LOCKED_PATHS = ("/settings", "/sync", "/api/background/refresh")
 SETUP_PATHS = ("/settings/login", "/settings/save")         # the first-time setup on the homepage
@@ -37,10 +39,10 @@ def is_public():
 
 def guard():
     """Runs before every request."""
-    public = is_public() and request.path != "/ping"   # /ping stays reachable in every mode (uptime monitors)
-    if public:
-        _public_rules()
+    public = is_public() and request.path != "/ping"   # /ping stays reachable whatever is shared (uptime monitors)
     token = api_token()
+    if public:
+        _public_rules(token)
     if token is False:
         abort(Response("Invalid API token\n", 401, {"WWW-Authenticate": "Bearer"}))
     if request.method not in ("GET", "HEAD"):
@@ -52,17 +54,18 @@ def guard():
         return padlock()
 
 
-def _public_rules():
-    mode = settings["public_mode"]
-    if mode == "off":
-        abort(404)
-    if request.path == "/calendar.ics":
-        return                                   # token is checked in the route
-    if mode == "ics":
-        abort(404)                               # only the ICS file is public
-    # mode "dashboard": read-only - no settings, no tasks, no triggering syncs
-    if request.method != "GET" or request.path.startswith(("/settings", "/api/tasks")):
-        abort(404)
+def _public_rules(token):
+    """The public side reaches only the areas ticked in the settings; everything else does not exist there."""
+    areas, path = settings["public_areas"], request.path
+    if "ics" in areas and path == "/calendar.ics":
+        return                                   # the ICS token is checked in the route
+    if "homepage" in areas and request.method == "GET" and (path in HOMEPAGE_PATHS or path.startswith("/static/")):
+        return
+    if "api" in areas and path.startswith("/api/"):
+        if token is None:
+            abort(Response("API token required\n", 401, {"WWW-Authenticate": "Bearer"}))
+        return                                   # validity and write access are checked by the guard
+    abort(404)
 
 
 def _same_site():

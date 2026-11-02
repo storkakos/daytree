@@ -55,7 +55,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 | **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. The one exception the owner asked for is the settings padlock (`SETTINGS_LOCK`): a password for the settings only, with no login page and no user accounts. **Do not add other app-level auth unless the user asks.** |
 | Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `daytree/i18n.py`. |
 | Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
-| Exposure mode (**off / ICS only / dashboard read-only**) is **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
+| The shared areas (**ICS feed, homepage read-only, API with token**, any combination, none by default) are **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
 | One container, Flask, **no database**. | Keep it slim. State = one encrypted settings file + one ICS file + a small status JSON. |
 
 ---
@@ -77,7 +77,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 |---|---|
 | `app.py` | Entry point for gunicorn (`app:app`). Builds the app and starts the background threads. |
 | `daytree/core.py` | Data paths, the encryption key, encrypted files, the settings and the time zone. No Flask. |
-| `daytree/auth.py` | Access control: internal and public side, exposure modes, CSRF check, ICS token. |
+| `daytree/auth.py` | Access control: internal and public side, shared areas, CSRF check, API and ICS tokens, padlock. |
 | `daytree/sync.py` | TimeTree login and export, ICS repair, the scheduler, and reading events from the ICS file. |
 | `daytree/tunnel.py` | The `cloudflared` supervisor. |
 | `daytree/display.py` | The homepage, `/kiosk` and their data: config, events, weather, background photos, waste bins. |
@@ -103,7 +103,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 | File | Content | Protection |
 |---|---|---|
-| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, scrypt hash of the padlock password, API tokens (name, access, SHA-256 hash, dates), exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
+| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, scrypt hash of the padlock password, API tokens (name, access, SHA-256 hash, dates), shared tunnel areas, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
@@ -118,26 +118,24 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 
 | Route | Internal (8080) | Public side (8081 or request with `Cf-Ray` / `Cf-Connecting-Ip`) |
 |---|---|---|
-| `GET /` kiosk homepage with first-time setup popup | yes | only in mode `dashboard` (read-only view: no settings gear, no tasks, no setup popup) |
-| `GET /api/events` | yes | only in mode `dashboard` |
-| `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | only in mode `dashboard` (without tasks) |
-| `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
-| `GET /api/config`, `/api/background`, `/api/weather`, `/api/waste` | yes | only in mode `dashboard` (the greeting name is removed) |
-| `POST /api/background/refresh` | yes, padlock applies | never |
+| `GET /` kiosk homepage with first-time setup popup | yes | area `homepage` (read-only view: no settings gear, no tasks, no setup popup) |
+| `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | area `homepage` (without tasks) |
+| `GET /api/config`, `/api/events`, `/api/background`, `/api/weather`, `/api/waste`, `/static/…` | yes | area `homepage` without a token (the greeting name is removed); area `api` with a token |
+| `/api/tasks` (GET, POST, PATCH, DELETE), `GET /api/status` | yes | area `api` with a token |
+| `POST /api/background/refresh` | yes, padlock applies | area `api` with a read-write token |
 | `POST /sync` | yes, padlock applies | never |
 | `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
 | `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
-| `GET /api/status` | yes | only in mode `dashboard` |
-| `GET /calendar.ics?token=…` | yes (token required) | modes `ics` and `dashboard` (token required) |
-| `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, in every mode |
-| anything else on public side in mode `off` | – | 404 |
+| `GET /calendar.ics?token=…` | yes (token required) | area `ics` (token required) |
+| `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, whatever is shared |
+| anything else on the public side | – | 404; `/api/` in area `api` without a token: 401 |
 
 All state-changing requests additionally require a same-origin `Origin`/`Referer` (basic CSRF protection), except
 `/api/` requests with a valid read-write API token. API tokens:
 
 - count only in the `Authorization: Bearer` header of an `/api/` request, never in the URL;
 - an unknown token on `/api/` gets 401, a read-only token gets 403 for anything but `GET`;
-- open nothing on the public side yet. Choosing an API area for the tunnel is #51.
+- open the API on the public side only when the area `api` is shared; they never open the settings or `/sync`.
 
 "Padlock applies": with `SETTINGS_LOCK=true` these routes answer 403 until the browser is unlocked, and `GET /settings`
 shows the padlock instead. `/settings/login` and `/settings/save` stay open while the app is not set up yet, so the
@@ -157,7 +155,8 @@ first-time setup on the homepage works.
   password changes in another browser. Five wrong passwords block unlocking for 60 seconds.
 - The ICS file is replaced only if the exporter exits 0 and produced a non-empty file.
 - The sync interval defaults to 3 hours, is limited to 30–1440 minutes in 30-minute steps, and changes take effect immediately.
-- Public-side access control fails **closed** (default mode `off`); `is_public()` also treats
+- Public-side access control fails **closed** (no area shared by default; the homepage area is an explicit list of
+  paths in `HOMEPAGE_PATHS`); `is_public()` also treats
   Cloudflare headers as public, so a mis-pointed tunnel (to port 8080) is still restricted.
 - If `settings.enc` cannot be decrypted, startup aborts with a clear message and **does not overwrite** the file.
 
@@ -203,8 +202,8 @@ real TimeTree/Cloudflare credentials**.
   (one small calendar including recurring and all-day events); `/calendar.ics` returns 200 with the
   correct token; saving a new interval changes the next-sync time without a restart; the stored password
   and ICS token were not found in plaintext in `/data`, `/secrets`, process arguments or HTML.
-- With a real `cloudflared` and public hostname: `Registered tunnel connection` detection, and modes
-  `off`, `ics` and `dashboard` behave as specified, both with the hostname pointing to port 8081 and
+- With a real `cloudflared` and public hostname: `Registered tunnel connection` detection, and the then
+  modes `off`, `ics` and `dashboard` (now no area, `ics`, `ics` + `homepage`) behaved as specified, both with the hostname pointing to port 8081 and
   to port 8080 (restricted by the Cloudflare-header fallback).
 - `PORT` in `.env` changes the host port (tested with 8090) without affecting the tunnel.
 - After the split into the `daytree/` package (2026-11-02): the image builds, the container becomes healthy as uid 1000,
@@ -217,7 +216,8 @@ real TimeTree/Cloudflare credentials**.
 - Login flow, calendar list (deactivated calendars filtered), calendar selection, interval clamping.
 - CSRF origin check for every state-changing route.
 - Access table: every route against the internal side, the internal side with the padlock closed, and the public side
-  (port 8081, `Cf-Ray`, `Cf-Connecting-Ip`) in modes `off` / `ics` / `dashboard`, with a correct, wrong or missing ICS token.
+  (port 8081, `Cf-Ray`, `Cf-Connecting-Ip`) with no area, `ics`, `homepage` or `api` shared, with a correct, wrong or
+  missing ICS token; and API tokens through the tunnel with and without the `api` area.
 - Settings padlock: first password, unlock, lock, idle timeout, lockout, password change, setup while locked.
 - API tokens: shown once, stored as a hash, read and write access, revoke, never from the URL, nothing from outside;
   a table of every route with no, read-only, read-write and unknown token; every route is listed in the tables.
@@ -249,9 +249,10 @@ dependencies give. After a change, update section 4 of this file with what you a
 - [ ] Settings → sign-in lists the real calendars; selecting one and saving works; **Sync now** produces `/data/timetree.ics`.
 - [ ] Changing the interval in the UI changes the next-sync time without a restart.
 - [ ] `GET /calendar.ics` → 403 without/with wrong token, 200 with the correct one.
-- [ ] Tunnel mode `ics`: via the public hostname only `/calendar.ics?token=…` and `/ping` work; `/`, `/settings`, `/api/status` → 404.
-- [ ] Tunnel mode `dashboard`: `/` works read-only (no token, no Settings link, no Sync button); `/settings` and all POSTs → 404.
-- [ ] Tunnel mode `off`: everything on the public side except `/ping` → 404.
+- [ ] Area `ics` only: via the public hostname only `/calendar.ics?token=…` and `/ping` work; `/`, `/settings`, `/api/status` → 404.
+- [ ] Area `homepage`: `/` works read-only (no token, no Settings link, no Sync button); `/settings`, `/api/status` and all POSTs → 404.
+- [ ] Area `api`: `/api/tasks` works with a token and gives 401 without one; `/` and `/settings` → 404.
+- [ ] Nothing shared: everything on the public side except `/ping` → 404.
 - [ ] No password, token or key appears in container logs, HTML responses or process arguments (`ps`).
 - [ ] `pytest` passes.
 - [ ] Final image runs as non-root and does not contain build tools.
@@ -275,7 +276,7 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Do not publish port 8081 in `docker-compose.yml`.
 - Do not add a login/auth system, a database, or a JS framework without the owner's explicit request.
 - Every new route goes into the access table in `tests/test_access.py`. Routes are closed by default, and opening one is the exception.
-- Do not change the exposure-mode semantics without updating the UI text, README, the access table and this file.
+- Do not change what an area shares without updating the UI text, README, the access table and this file.
 - The repo is public. No device names, IP addresses or personal data in code, commits, issues or screenshots.
 
 ### Architecture

@@ -288,15 +288,16 @@
   <section class="group">
     <h2>{{ _("Reachable through the tunnel") }}</h2>
     <div class="card">
-      {% for mode, title, text in [('off', _("Nothing"), _("Only the /ping health check.")), ('ics', _("ICS file only"), _("The ICS feed and /ping. Everything else returns 404.")), ('dashboard', _("Homepage (read-only) + ICS"), _("The homepage without tasks and settings, the ICS feed and /ping."))] %}
+      {% for area, title, text in [('ics', _("ICS feed"), _("Calendar apps fetch the feed with its token.")), ('homepage', _("Homepage (read-only)"), _("The homepage and /kiosk, without tasks and settings.")), ('api', _("API"), _("Apps with an API token. Read-only tokens can only read."))] %}
       <label class="row option">
-        <input form="tunnel-form" type="radio" name="public_mode" value="{{ mode }}" {{ 'checked' if s.public_mode == mode }}>
+        <input form="tunnel-form" type="checkbox" name="public_areas" value="{{ area }}" {{ 'checked' if area in s.public_areas }}>
         <div><strong>{{ title }}</strong><small>{{ text }}</small></div>
         <span class="tick">✓</span>
       </label>
       {% endfor %}
       <button class="action" form="tunnel-form">{{ _("Save") }}</button>
     </div>
+    <p>{{ _("Tick what the tunnel may reach. With nothing ticked, only the /ping health check is reachable. Settings are never reachable.") }}</p>
     <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
   </section>
 

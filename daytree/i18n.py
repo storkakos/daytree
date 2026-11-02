@@ -149,13 +149,14 @@ GERMAN = {
     "Token is stored": "Token ist gespeichert",
     "Delete the stored token": "Gespeichertes Token löschen",
     "Reachable through the tunnel": "Über den Tunnel erreichbar",
-    "Nothing": "Nichts",
-    "Only the /ping health check.": "Nur der Health-Check /ping.",
-    "ICS file only": "Nur ICS-Datei",
-    "The ICS feed and /ping. Everything else returns 404.": "ICS-Feed und /ping. Alles andere liefert 404.",
-    "Homepage (read-only) + ICS": "Startseite (nur lesen) + ICS",
-    "The homepage without tasks and settings, the ICS feed and /ping.":
-        "Die Startseite ohne Aufgaben und Einstellungen, der ICS-Feed und /ping.",
+    "ICS feed": "ICS-Feed",
+    "Calendar apps fetch the feed with its token.": "Kalender-Apps holen den Feed mit seinem Token.",
+    "Homepage (read-only)": "Startseite (nur lesen)",
+    "The homepage and /kiosk, without tasks and settings.": "Die Startseite und /kiosk, ohne Aufgaben und Einstellungen.",
+    "API": "API",
+    "Apps with an API token. Read-only tokens can only read.": "Apps mit einem API-Token. Tokens mit Lesezugriff können nur lesen.",
+    "Tick what the tunnel may reach. With nothing ticked, only the /ping health check is reachable. Settings are never reachable.":
+        "Hake an, was der Tunnel erreichen darf. Ist nichts angehakt, ist nur der Health-Check /ping erreichbar. Die Einstellungen sind nie erreichbar.",
     "Public hostname": "Öffentlicher Hostname",
     "The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.":
         "Die Startseite hat keinen eigenen Login. Schütze den Hostnamen mit einer Cloudflare-Access-Richtlinie, wenn du sie freigibst.",
