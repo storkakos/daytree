@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from flask import Flask, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from daytree import admin, api, auth, display, sync, tunnel
 from daytree.i18n import _, language
@@ -15,6 +16,9 @@ ROOT = Path(__file__).resolve().parent.parent      # templates/ and static/ live
 
 app = Flask(__name__, root_path=str(ROOT))
 app.secret_key = secrets.token_hex(16)
+# A reverse proxy (HTTPS_URL) or the Cloudflare tunnel says in X-Forwarded-Proto whether the browser used HTTPS
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=1, x_host=0, x_port=0, x_prefix=0)
+app.config["SESSION_COOKIE_SECURE"] = bool(auth.HTTPS_URL)
 for blueprint in (display.bp, api.bp, admin.bp):
     app.register_blueprint(blueprint)
 app.before_request(auth.guard)

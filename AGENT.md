@@ -151,6 +151,10 @@ first-time setup on the homepage works.
   `SECRET_KEY` is removed from the child environment.
 - A blank password field means "keep the stored password".
 - API tokens are `dt_` plus 32 random bytes. Only their SHA-256 hash is stored; `last_used` is saved at most once a day.
+- With `HTTPS_URL` set, plain HTTP on the internal side redirects `/` and `/settings` there (308) and refuses writes
+  and any request with an `Authorization` header (403). `/kiosk`, its reads, `/ping` and the healthcheck stay on HTTP.
+  `ProxyFix` trusts `X-Forwarded-Proto` for `request.is_secure`; the tunnel side is never redirected. An invalid
+  `HTTPS_URL` stops the start.
 - The padlock keeps unlocked sessions in process memory only, so a restart locks every browser. The cookie is
   `HttpOnly` and `SameSite=Strict`; a session closes after 30 minutes without a request, with **Lock now**, or when the
   password changes in another browser. Five wrong passwords block unlocking for 60 seconds.
