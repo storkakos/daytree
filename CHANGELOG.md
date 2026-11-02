@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - Waste bins moved from their own panel into Today and Next 7 days, at the right of each day.
+- The weather forecast has no title any more, because it explains itself.
 
 ### Added
 
