@@ -27,7 +27,7 @@ from icalendar import Calendar
 
 from i18n import translate
 
-VERSION = "0.12.0"
+VERSION = "0.13.0"
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
