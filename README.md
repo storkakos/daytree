@@ -211,6 +211,7 @@ TZ=Europe/London
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
 | `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
+| `HTTPS_URL` | – | Address of your [reverse proxy](#https-on-your-home-network), such as `https://daytree.example.com`. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
@@ -232,6 +233,35 @@ is not affected by a changed host port.
 - Anyone with both volumes, or with shell access to the running container, can decrypt the settings. The TimeTree
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
+
+### HTTPS on your home network
+
+Port 8080 serves plain HTTP, so on a shared network a padlock password or API token could be read. If a reverse proxy
+such as nginx serves Daytree over HTTPS, set its address in `.env`:
+
+```bash
+HTTPS_URL=https://daytree.example.com
+```
+
+- Browsers that open the homepage or the settings over HTTP are sent to that address.
+- Writes and API tokens over plain HTTP are refused.
+- `/kiosk`, the data it shows, `/ping` and the Docker healthcheck stay on HTTP, for old browsers on wall displays.
+- The Cloudflare tunnel is not affected.
+
+The proxy must pass the original host name and the scheme:
+
+```nginx
+location / {
+    proxy_pass http://<host>:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+> [!WARNING]
+> Keep the reverse proxy on your home network. Daytree treats every request without Cloudflare headers as local, so a
+> proxy that is reachable from the internet would open the settings and tasks to everyone. Use the
+> [Cloudflare tunnel](#remote-access-with-cloudflare) for access from outside.
 
 ### Settings padlock
 

@@ -2,17 +2,29 @@
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import threading
 import time
 from datetime import date
 from urllib.parse import urlparse
 
-from flask import Response, abort, render_template, request
+from flask import Response, abort, redirect, render_template, request
 
 from daytree.core import needs_setup, save_settings, settings
 
 PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8081"))   # port the Cloudflare tunnel points to
+
+
+def _https_url(value):
+    """HTTPS_URL from compose: empty, or the address of a reverse proxy in front of port 8080."""
+    value = value.strip().rstrip("/")
+    if value and not re.fullmatch(r"https://[^/?#\s]+", value):
+        raise SystemExit("HTTPS_URL must be empty or look like https://daytree.example.com, without a path.")
+    return value
+
+
+HTTPS_URL = _https_url(os.environ.get("HTTPS_URL", ""))
 # What the homepage area opens: its pages, the reads it makes and its static files. No tasks, settings or status.
 HOMEPAGE_PATHS = ("/", "/kiosk", "/api/config", "/api/events", "/api/weather", "/api/waste", "/api/background")
 # Need an API token even from the home network: a forged Origin header must not get around the padlock
@@ -42,6 +54,10 @@ def is_public():
 def guard():
     """Runs before every request."""
     public = is_public() and request.path != "/ping"   # /ping stays reachable whatever is shared (uptime monitors)
+    if HTTPS_URL and not public and not request.is_secure:
+        response = _plain_http()
+        if response:
+            return response
     token = api_token()
     if public:
         _public_rules(token)
@@ -70,6 +86,16 @@ def _public_rules(token):
             _unauthorized("API token required")
         return                                   # validity and write access are checked by the guard
     abort(404)
+
+
+def _plain_http():
+    """With HTTPS_URL set, the home network uses HTTP only for /kiosk, the reads it makes, /ping and the healthcheck.
+    The tunnel is not affected: Cloudflare encrypts it outside the container."""
+    if request.method not in ("GET", "HEAD") or "Authorization" in request.headers:
+        abort(Response(f"Use {HTTPS_URL}\n", 403))
+    if request.path == "/" or request.path.startswith("/settings"):
+        return redirect(HTTPS_URL + (request.full_path if request.query_string else request.path), 308)
+    return None
 
 
 def _unauthorized(message):

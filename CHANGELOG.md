@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-02
+
+Daytree can send browsers to your HTTPS reverse proxy.
+
+### Added
+
+- `HTTPS_URL` in `.env`: the homepage and the settings move to that address, and writes and API tokens over plain
+  HTTP are refused. `/kiosk`, `/ping` and the healthcheck stay on HTTP. The padlock cookie is `Secure` behind HTTPS.
+
 ## [0.18.0] - 2026-11-02
 
 Automations can start a sync.
@@ -177,7 +186,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.18.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.19.0...dev
+[0.19.0]: https://github.com/storkakos/daytree/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/storkakos/daytree/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/storkakos/daytree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/storkakos/daytree/compare/v0.15.1...v0.16.0
