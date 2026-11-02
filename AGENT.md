@@ -80,7 +80,9 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service; **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
-| `requirements.txt` | `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
+| `requirements.in` | Direct dependencies: `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
+| `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |
+| `.github/` | Tests on every pull request, and Dependabot updates against `dev`. |
 | `i18n.py` | German translations. English strings are the keys. |
 | `static/` | Logo, favicon, home screen icon and weather icons (`weather-sprites.svg`, from Bonjourr). |
 | `tests/smoke_test.py` | End-to-end logic test (no network/Docker). Prints `ALL OK`. Needs Linux (file modes, fake `cloudflared`). |
