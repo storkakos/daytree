@@ -463,6 +463,7 @@
   // The look changes at once, before the save comes back
   form.querySelectorAll('input[name=appearance]').forEach(input => input.addEventListener('change', () => {
     document.documentElement.className = input.value === 'auto' ? '' : input.value;
+    document.querySelector('meta[name=color-scheme]').content = input.value === 'auto' ? 'light dark' : 'only ' + input.value;
     if (top !== self) document.documentElement.classList.add('embedded');
   }));
   form.addEventListener('input', event => {

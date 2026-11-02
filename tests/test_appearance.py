@@ -13,6 +13,8 @@ def html_class(client, path):
 def test_automatic_by_default(client):
     assert core.settings["appearance"] == "auto"
     assert 'class=""' in html_class(client, "/settings")
+    for path in ("/settings", "/"):
+        assert b'<meta name="color-scheme" content="light dark">' in client.get(path).data
 
 
 @pytest.mark.parametrize("value", ["light", "dark"])
@@ -21,6 +23,8 @@ def test_fixed_look_everywhere(client, monkeypatch, value):
     assert r.status_code == 200 and core.settings["appearance"] == value
     for path in ("/settings", "/"):
         assert f'class="{value}"' in html_class(client, path)
+        # Browsers with their own dark mode must not recolor a fixed look
+        assert f'<meta name="color-scheme" content="only {value}">' in client.get(path).data.decode()
     monkeypatch.setattr(auth, "SETTINGS_LOCK", True)
     core.settings.update(calendar_code="fam123", lock_hash=auth.hash_password("correct horse"))
     page = client.get("/settings").data.decode()

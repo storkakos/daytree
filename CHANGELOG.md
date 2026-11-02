@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-02
+
+### Fixed
+
+- Browsers with their own dark mode no longer override the appearance setting. The pages now tell the browser
+  which color schemes they have: both for Automatic, only the chosen one for Light or Dark.
+
 ## [0.24.0] - 2026-11-02
 
 The settings can stay light or dark, whatever the device does.
@@ -240,7 +247,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.1...dev
+[0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/storkakos/daytree/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/storkakos/daytree/compare/v0.21.0...v0.22.0
