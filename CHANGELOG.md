@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-02
+
+Daytree can be installed without building it.
+
+### Added
+
+- A prebuilt image for amd64 and arm64 at `ghcr.io/storkakos/daytree`, published with every release as `x.y.z`, `x.y`
+  and `latest`. `docker compose pull` gets it; `docker compose up -d --build` still builds from source.
+- `DAYTREE_VERSION` in `.env` pins the prebuilt image to a version.
+
 ## [0.22.0] - 2026-11-02
 
 The homepage can be installed as an app.
@@ -217,7 +227,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.22.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.23.0...dev
+[0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/storkakos/daytree/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/storkakos/daytree/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/storkakos/daytree/compare/v0.19.0...v0.20.0

@@ -89,11 +89,11 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `templates/kiosk.html` | Homepage and `/kiosk`: agenda, week, tasks, reminders, weather forecast, waste collection and setup popup. Vanilla JS, responsive for landscape, portrait and phones. |
 | `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
-| `docker-compose.yml` | One service; **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
+| `docker-compose.yml` | One service with both `image:` (prebuilt, `docker compose pull`) and `build: .` (from source, `--build`; the test box uses this); **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.in` | Direct dependencies: `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |
 | `requirements-dev.in`, `requirements-dev.txt` | Test tools (`pytest`), pinned the same way. Not installed in the image. |
-| `.github/` | Tests on every pull request, and Dependabot updates against `dev`. |
+| `.github/` | Tests on every pull request, Dependabot updates against `dev`, and `publish.yml`: on a published GitHub release, the image for amd64 and arm64 goes to `ghcr.io/storkakos/daytree` as `x.y.z`, `x.y` and `latest`. |
 | `static/` | Logo, favicon, home screen icons, `manifest.json` (app install for `/` only; `icon-192.png` is the logo scaled down) and weather icons (`weather-sprites.svg`, from Bonjourr). No service worker: no offline mode on purpose. |
 | `tests/`, `pytest.ini` | pytest suite (no network/Docker). `test_access.py` holds the access table. File modes and the fake `cloudflared` need Linux; those tests are skipped on Windows. |
 | `tests/port_check.py` | Checks internal/public port detection against the running container. Prints `ALL OK`. |
