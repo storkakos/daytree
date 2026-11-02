@@ -29,7 +29,9 @@ app.before_request(auth.guard)
 def _inject():
     # "light" or "dark" fixes the look; an empty class follows the device
     theme = settings["appearance"] if settings["appearance"] in ("light", "dark") else ""
-    return {"public": auth.is_public(), "_": _, "lang": language(), "theme": theme}
+    # Tells browsers with their own dark mode which schemes the page has, so they do not recolor it
+    scheme = f"only {theme}" if theme else "light dark"
+    return {"public": auth.is_public(), "_": _, "lang": language(), "theme": theme, "color_scheme": scheme}
 
 
 @app.after_request
