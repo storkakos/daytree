@@ -44,8 +44,7 @@
   #week { flex-grow:1.4; }
   .column { flex:1 1 0; min-width:0; min-height:0; display:flex; flex-direction:column; }
   main > * + * { margin-left:.9rem; }
-  #forecast { flex:none; padding:.9rem .8rem .6rem; }
-  #forecast h2 { padding-left:.3rem; }
+  #forecast { flex:none; padding:.6rem .8rem; }
   .column section[hidden] { display:none; }
   .column section:not([hidden]) ~ section { margin-top:.9rem; }
   #forecast-list { flex:none; display:flex; overflow-x:auto; overflow-y:hidden; }
@@ -173,7 +172,7 @@
 
   <main class="{{ 'no-tasks' if not show_tasks }}">
     <div id="left" class="column">
-      <section id="forecast" class="glass" hidden><h2>{{ _("Weather forecast") }}</h2><ul id="forecast-list"></ul></section>
+      <section id="forecast" class="glass" hidden aria-label="{{ _("Weather forecast") }}"><ul id="forecast-list"></ul></section>
       <section id="today" class="glass"><h2>{{ _("Today") }}<span id="today-bins" class="bins"></span></h2><ul id="today-list"></ul></section>
     </div>
     <section id="week" class="glass"><h2>{{ _("Next 7 days") }}</h2><ul id="week-list"></ul></section>
