@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-02
+
+The homepage can be installed as an app.
+
+### Added
+
+- A web app manifest for `/`: browsers offer to install the homepage, which then opens without the address bar.
+  It needs HTTPS. `/kiosk` stays a plain page, and there is no offline mode.
+
 ## [0.21.0] - 2026-11-02
 
 Daytree can be backed up and moved with one file.
@@ -208,7 +217,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.21.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.22.0...dev
+[0.22.0]: https://github.com/storkakos/daytree/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/storkakos/daytree/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/storkakos/daytree/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/storkakos/daytree/compare/v0.18.0...v0.19.0

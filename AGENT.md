@@ -94,7 +94,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |
 | `requirements-dev.in`, `requirements-dev.txt` | Test tools (`pytest`), pinned the same way. Not installed in the image. |
 | `.github/` | Tests on every pull request, and Dependabot updates against `dev`. |
-| `static/` | Logo, favicon, home screen icon and weather icons (`weather-sprites.svg`, from Bonjourr). |
+| `static/` | Logo, favicon, home screen icons, `manifest.json` (app install for `/` only; `icon-192.png` is the logo scaled down) and weather icons (`weather-sprites.svg`, from Bonjourr). No service worker: no offline mode on purpose. |
 | `tests/`, `pytest.ini` | pytest suite (no network/Docker). `test_access.py` holds the access table. File modes and the fake `cloudflared` need Linux; those tests are skipped on Windows. |
 | `tests/port_check.py` | Checks internal/public port detection against the running container. Prints `ALL OK`. |
 | `.env.example` | Only `PORT` and an optional `SECRET_KEY`. **No credentials belong in env files.** |

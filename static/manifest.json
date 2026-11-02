@@ -1,0 +1,14 @@
+{
+  "name": "Daytree",
+  "short_name": "Daytree",
+  "description": "Your TimeTree calendar, tasks and weather at a glance",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14181d",
+  "theme_color": "#14181d",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
