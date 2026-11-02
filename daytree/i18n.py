@@ -1,4 +1,7 @@
 """UI translations. English is the source language: every string is its own key."""
+from flask import request
+
+from daytree.core import LANGUAGES, settings
 
 GERMAN = {
     # Homepage
@@ -184,3 +187,20 @@ GERMAN = {
 
 def translate(text, language):
     return GERMAN.get(text, text) if language == "de" else text
+
+
+def language():
+    if settings["language"] in LANGUAGES:
+        return settings["language"]
+    if request.cookies.get("lang") in LANGUAGES:     # set by the homepage from the browser language
+        return request.cookies["lang"]
+    return request.accept_languages.best_match(LANGUAGES) or LANGUAGES[0]
+
+
+def _(text):
+    return translate(text, language())
+
+
+def hours(minutes):
+    value = f"{minutes / 60:g}"
+    return f"{value.replace('.', ',')} Std." if language() == "de" else f"{value} h"
