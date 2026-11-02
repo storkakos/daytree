@@ -22,7 +22,7 @@ LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, t
 
 MIN_MINUTES, MAX_MINUTES, STEP_MINUTES = 30, 1440, 30
 PUBLIC_MODES = ("off", "ics", "dashboard")
-SECRET_KEYS = ("password", "tunnel_token")                 # never passed to templates
+SECRET_KEYS = ("password", "tunnel_token", "lock_hash")    # never passed to templates
 LANGUAGES = ("en", "de")
 DEFAULT_TZ = os.environ.get("TZ", "")                      # from docker-compose / .env
 
@@ -80,6 +80,7 @@ DEFAULTS = {
     "public_hostname": "",
     "tunnel_enabled": False,
     "tunnel_token": "",
+    "lock_hash": "",            # scrypt hash of the settings padlock password
     "language": "auto",         # auto | en | de
     "timezone": "",             # empty = DEFAULT_TZ
     "time_format": "24",        # 24 | 12

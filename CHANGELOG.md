@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- A padlock for the settings. With `SETTINGS_LOCK=true`, the settings, **Sync now** and new photos need a password,
+  which you set in the browser. It locks again after 30 minutes without use, and with **Lock now**.
+
 ## [0.13.0] - 2026-11-02
 
 The bins move next to the days they belong to.
