@@ -121,7 +121,7 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 | `GET /` kiosk homepage with first-time setup popup | yes | area `homepage` (read-only view: no settings gear, no tasks, no setup popup) |
 | `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | area `homepage` (without tasks) |
 | `GET /api/config`, `/api/events`, `/api/background`, `/api/weather`, `/api/waste`, `/static/…` | yes | area `homepage` without a token (the greeting name is removed); area `api` with a token |
-| `/api/tasks` (GET, POST, PATCH, DELETE), `GET /api/status` | yes | area `api` with a token |
+| `/api/tasks` (GET, POST), `/api/tasks/<id>` (GET, PUT, PATCH, DELETE), `GET /api/calendars`, `GET /api/calendars/<id>/events`, `GET /api/status` | yes | area `api` with a token |
 | `POST /api/background/refresh` | yes, padlock applies | area `api` with a read-write token |
 | `POST /sync` | yes, padlock applies | never |
 | `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |

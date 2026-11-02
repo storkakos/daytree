@@ -204,3 +204,8 @@ def occurrences(first, last):
         })
     out.sort(key=lambda e: e["sort"])
     return out
+
+
+def as_json(events):
+    """Events from occurrences() with ISO dates, ready for jsonify."""
+    return [{**e, "date": e["date"].isoformat(), "end_date": e["end_date"].isoformat(), "sort": None} for e in events]
