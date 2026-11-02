@@ -78,6 +78,17 @@ Everything is behind the gear icon, saved immediately and shown live:
 **You need:** Docker with Compose, and a TimeTree account with an e-mail address and password. Accounts that only sign
 in through Google or Apple have no password and are not supported.
 
+With the prebuilt image for amd64 and arm64, such as a Raspberry Pi:
+
+```bash
+mkdir daytree && cd daytree
+curl -O https://raw.githubusercontent.com/storkakos/daytree/main/docker-compose.yml
+docker compose pull
+docker compose up -d
+```
+
+Or build it from source:
+
 ```bash
 git clone https://github.com/storkakos/daytree.git
 cd daytree
@@ -234,6 +245,7 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
+| `DAYTREE_VERSION` | `latest` | Version of the prebuilt image, such as `0.23.0` or `0.23`. |
 | `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
 | `HTTPS_URL` | – | Address of your [reverse proxy](#https-on-your-home-network), such as `https://daytree.example.com`. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
@@ -321,12 +333,21 @@ You can also back up the volumes:
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
 
-To upgrade:
+To upgrade the prebuilt image:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+To upgrade a build from source:
 
 ```bash
 git pull
 docker compose up -d --build
 ```
+
+`DAYTREE_VERSION` in `.env` pins the prebuilt image to a version such as `0.23.0`, or to `0.23` for its bug fixes.
 
 Installations from before the Daytree rename used volumes named `timetree-ics_timetree-data` and
 `timetree-ics_timetree-secrets`. Stop the old container and copy both volumes to `daytree_daytree-data` and

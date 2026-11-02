@@ -2,7 +2,8 @@ name: daytree
 
 services:
   daytree:
-    build: .
+    image: ghcr.io/storkakos/daytree:${DAYTREE_VERSION:-latest}   # prebuilt: docker compose pull
+    build: .                      # from source: docker compose up -d --build
     container_name: daytree
     restart: unless-stopped
     ports:
