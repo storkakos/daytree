@@ -7,6 +7,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-02
+
+The chosen option of a switch with several choices is easy to see again.
+
+### Fixed
+
+- In dark mode, the chosen option of controls such as *Read only* / *Read and write* or the clock style was hard to
+  tell apart. It is now blue with white text in both modes.
+
+## [0.15.0] - 2026-11-02
+
+Apps and scripts can use the API with their own tokens.
+
+### Added
+
+- API tokens in the settings: give each one a name, choose read-only or read-write, and revoke them one by one.
+  A token is shown once and sent as `Authorization: Bearer`. Writing to the API from outside the homepage needs one.
+
+### Changed
+
+- Warnings below the settings sections are red again.
+
+## [0.14.0] - 2026-11-02
+
+The settings can be locked with a password.
+
+### Added
+
+- A padlock for the settings. With `SETTINGS_LOCK=true`, the settings, **Sync now** and new photos need a password,
+  which you set in the browser. It locks again after 30 minutes without use, and with **Lock now**.
+
 ## [0.13.0] - 2026-11-02
 
 The bins move next to the days they belong to.
@@ -108,7 +139,10 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.13.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.15.1...dev
+[0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/storkakos/daytree/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/storkakos/daytree/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/storkakos/daytree/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/storkakos/daytree/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/storkakos/daytree/compare/v0.10.0...v0.11.0

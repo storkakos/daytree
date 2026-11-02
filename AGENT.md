@@ -52,8 +52,8 @@ The user wrote in German; these are faithful English translations. Treat every i
 
 | Decision | Rationale |
 |---|---|
-| **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. **Do not add app-level auth unless the user asks.** |
-| Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `i18n.py`. |
+| **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. The one exception the owner asked for is the settings padlock (`SETTINGS_LOCK`): a password for the settings only, with no login page and no user accounts. **Do not add other app-level auth unless the user asks.** |
+| Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `daytree/i18n.py`. |
 | Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
 | Exposure mode (**off / ICS only / dashboard read-only**) is **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
 | One container, Flask, **no database**. | Keep it slim. State = one encrypted settings file + one ICS file + a small status JSON. |
@@ -64,7 +64,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 
 ```
 Browser / Outlook ──► :8080 (internal)  ┐
-Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 threads) ─► Flask app (app.py)
+Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 threads) ─► Flask app (daytree/)
                                          ┘        │
                                                   ├─ scheduler thread  ─► `timetree-exporter` subprocess ─► /data/timetree.ics
                                                   ├─ tunnel supervisor ─► `cloudflared tunnel run` subprocess (TUNNEL_TOKEN via env)
@@ -75,17 +75,27 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 | Path | Purpose |
 |---|---|
-| `app.py` | The whole backend: encryption, settings, sync scheduler, tunnel supervisor, access guard, routes. |
+| `app.py` | Entry point for gunicorn (`app:app`). Builds the app and starts the background threads. |
+| `daytree/core.py` | Data paths, the encryption key, encrypted files, the settings and the time zone. No Flask. |
+| `daytree/auth.py` | Access control: internal and public side, exposure modes, CSRF check, ICS token. |
+| `daytree/sync.py` | TimeTree login and export, ICS repair, the scheduler, and reading events from the ICS file. |
+| `daytree/tunnel.py` | The `cloudflared` supervisor. |
+| `daytree/display.py` | The homepage, `/kiosk` and their data: config, events, weather, background photos, waste bins. |
+| `daytree/api.py` | Tasks API, `/api/status`, `/ping` and `/calendar.ics`. |
+| `daytree/admin.py` | The settings pages and their forms. |
+| `daytree/web.py` | Builds the Flask app from the areas above, registers the access guard and starts the threads. |
+| `daytree/i18n.py` | German translations (English strings are the keys) and the language of a request. |
+| `daytree/__init__.py` | `VERSION`. |
 | `templates/kiosk.html` | Homepage and `/kiosk`: agenda, week, tasks, reminders, weather forecast, waste collection and setup popup. Vanilla JS, responsive for landscape, portrait and phones. |
 | `templates/base.html`, `settings.html` | Settings UI with sync status (server-rendered, light/dark via CSS). |
 | `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service; **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.in` | Direct dependencies: `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |
+| `requirements-dev.in`, `requirements-dev.txt` | Test tools (`pytest`), pinned the same way. Not installed in the image. |
 | `.github/` | Tests on every pull request, and Dependabot updates against `dev`. |
-| `i18n.py` | German translations. English strings are the keys. |
 | `static/` | Logo, favicon, home screen icon and weather icons (`weather-sprites.svg`, from Bonjourr). |
-| `tests/smoke_test.py` | End-to-end logic test (no network/Docker). Prints `ALL OK`. Needs Linux (file modes, fake `cloudflared`). |
+| `tests/`, `pytest.ini` | pytest suite (no network/Docker). `test_access.py` holds the access table. File modes and the fake `cloudflared` need Linux; those tests are skipped on Windows. |
 | `tests/port_check.py` | Checks internal/public port detection against the running container. Prints `ALL OK`. |
 | `.env.example` | Only `PORT` and an optional `SECRET_KEY`. **No credentials belong in env files.** |
 
@@ -93,7 +103,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 | File | Content | Protection |
 |---|---|---|
-| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
+| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, scrypt hash of the padlock password, API tokens (name, access, SHA-256 hash, dates), exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
@@ -113,15 +123,25 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 | `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | only in mode `dashboard` (without tasks) |
 | `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
 | `GET /api/config`, `/api/background`, `/api/weather`, `/api/waste` | yes | only in mode `dashboard` (the greeting name is removed) |
-| `POST /api/background/refresh` | yes | never |
-| `POST /sync` | yes | never |
-| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel` | yes | never |
+| `POST /api/background/refresh` | yes, padlock applies | never |
+| `POST /sync` | yes, padlock applies | never |
+| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
+| `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
 | `GET /api/status` | yes | only in mode `dashboard` |
 | `GET /calendar.ics?token=…` | yes (token required) | modes `ics` and `dashboard` (token required) |
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, in every mode |
 | anything else on public side in mode `off` | – | 404 |
 
-All state-changing requests additionally require a same-origin `Origin`/`Referer` (basic CSRF protection).
+All state-changing requests additionally require a same-origin `Origin`/`Referer` (basic CSRF protection), except
+`/api/` requests with a valid read-write API token. API tokens:
+
+- count only in the `Authorization: Bearer` header of an `/api/` request, never in the URL;
+- an unknown token on `/api/` gets 401, a read-only token gets 403 for anything but `GET`;
+- open nothing on the public side yet. Choosing an API area for the tunnel is #51.
+
+"Padlock applies": with `SETTINGS_LOCK=true` these routes answer 403 until the browser is unlocked, and `GET /settings`
+shows the padlock instead. `/settings/login` and `/settings/save` stay open while the app is not set up yet, so the
+first-time setup on the homepage works.
 
 ### Key behaviours you must preserve
 
@@ -131,6 +151,10 @@ All state-changing requests additionally require a same-origin `Origin`/`Referer
   `cloudflared` **only through the child's environment** (`TIMETREE_PASSWORD`, `TUNNEL_TOKEN`), and
   `SECRET_KEY` is removed from the child environment.
 - A blank password field means "keep the stored password".
+- API tokens are `dt_` plus 32 random bytes. Only their SHA-256 hash is stored; `last_used` is saved at most once a day.
+- The padlock keeps unlocked sessions in process memory only, so a restart locks every browser. The cookie is
+  `HttpOnly` and `SameSite=Strict`; a session closes after 30 minutes without a request, with **Lock now**, or when the
+  password changes in another browser. Five wrong passwords block unlocking for 60 seconds.
 - The ICS file is replaced only if the exporter exits 0 and produced a non-empty file.
 - The sync interval defaults to 3 hours, is limited to 30–1440 minutes in 30-minute steps, and changes take effect immediately.
 - Public-side access control fails **closed** (default mode `off`); `is_public()` also treats
@@ -148,7 +172,7 @@ All state-changing requests additionally require a same-origin `Origin`/`Referer
   - Accounts without an e-mail/password (Google/Apple-only login) cannot log in.
   - Upstream warns about rate limiting and API breakage; keep the minimum interval conservative.
   - Version 1.0.0 writes all-day dates without `VALUE=DATE` and a VTIMEZONE that only covers the stored
-    start dates. `fix_ics()` in `app.py` repairs both after every export and also adds `CALSCALE`, `METHOD`
+    start dates. `fix_ics()` in `daytree/sync.py` repairs both after every export and also adds `CALSCALE`, `METHOD`
     and `X-WR-CALNAME` and removes `COLOR`. Keep the header changes when upstream fixes the defects.
 - Every `/calendar.ics` request is logged with method, status and user agent, never with the query string.
 - `cloudflared` official image: binary at `/usr/local/bin/cloudflared`, built with `CGO_ENABLED=0`
@@ -167,7 +191,7 @@ real TimeTree/Cloudflare credentials**.
 ### Verified on real Docker (2026-11-01, Debian 13, Docker 29.9, `timetree-exporter` 1.0.0)
 
 - The image builds and the container becomes healthy; it runs as non-root (uid 1000) without compiler tools.
-- `tests/smoke_test.py` prints `ALL OK` with the real packages inside the image.
+- The test suite (then `tests/smoke_test.py`) passed with the real packages inside the image.
 - `tests/port_check.py` against real gunicorn: `SERVER_PORT` reflects the listening socket and is not
   influenced by the `Host` header, so `is_public()` is correct as written.
 - `/secrets/secret.key` and `/data/settings.enc` have mode 600; `/calendar.ics` returns 403 without or
@@ -183,14 +207,20 @@ real TimeTree/Cloudflare credentials**.
   `off`, `ics` and `dashboard` behave as specified, both with the hostname pointing to port 8081 and
   to port 8080 (restricted by the Cloudflare-header fallback).
 - `PORT` in `.env` changes the host port (tested with 8090) without affecting the tunnel.
+- After the split into the `daytree/` package (2026-11-02): the image builds, the container becomes healthy as uid 1000,
+  `tests/port_check.py` prints `ALL OK`, the key and settings files have mode 600, and `pytest` passes on Linux.
 
-### Verified (by `tests/smoke_test.py`, with TimeTree HTTP mocked and a fake `cloudflared` script)
+### Verified (by the pytest suite in `tests/`, with TimeTree HTTP mocked and a fake `cloudflared` script)
 
 - Settings are encrypted at rest; legacy plaintext is migrated and deleted; key is stored outside `/data`.
 - Wrong key → clean abort, data untouched.
 - Login flow, calendar list (deactivated calendars filtered), calendar selection, interval clamping.
-- CSRF origin check.
-- Exposure modes `off` / `ics` / `dashboard` on the public side, and Cloudflare-header detection on port 8080.
+- CSRF origin check for every state-changing route.
+- Access table: every route against the internal side, the internal side with the padlock closed, and the public side
+  (port 8081, `Cf-Ray`, `Cf-Connecting-Ip`) in modes `off` / `ics` / `dashboard`, with a correct, wrong or missing ICS token.
+- Settings padlock: first password, unlock, lock, idle timeout, lockout, password change, setup while locked.
+- API tokens: shown once, stored as a hash, read and write access, revoke, never from the URL, nothing from outside;
+  a table of every route with no, read-only, read-write and unknown token; every route is listed in the tables.
 - Tasks, languages and date formats, the waste collection calendar, and background and weather handling.
 - Tunnel token extraction from a pasted command, start/stop supervision, token delivered via `TUNNEL_TOKEN` only,
   token absent from HTML and from the encrypted file's plaintext, status `connected`.
@@ -223,7 +253,7 @@ dependencies give. After a change, update section 4 of this file with what you a
 - [ ] Tunnel mode `dashboard`: `/` works read-only (no token, no Settings link, no Sync button); `/settings` and all POSTs → 404.
 - [ ] Tunnel mode `off`: everything on the public side except `/ping` → 404.
 - [ ] No password, token or key appears in container logs, HTML responses or process arguments (`ps`).
-- [ ] `python tests/smoke_test.py` prints `ALL OK`.
+- [ ] `pytest` passes.
 - [ ] Final image runs as non-root and does not contain build tools.
 
 ---
@@ -236,7 +266,7 @@ dependencies give. After a change, update section 4 of this file with what you a
   and JavaScript in `templates/`, with no build step.
 - **English only** — code, comments, docs, commit messages, issues and pull requests. Translate anything written in
   German into English. German is only the app's second language: UI strings are written in English and translated in
-  `i18n.py`; every string needs a German entry (checked by the smoke test).
+  `daytree/i18n.py`; every string needs a German entry (checked by the tests).
 
 ### Security
 
@@ -244,13 +274,15 @@ dependencies give. After a change, update section 4 of this file with what you a
   compose files, templates or test fixtures. Redact tokens in any error output you add.
 - Do not publish port 8081 in `docker-compose.yml`.
 - Do not add a login/auth system, a database, or a JS framework without the owner's explicit request.
-- Every new route goes into the access test. Routes are closed by default, and opening one is the exception.
-- Do not change the exposure-mode semantics without updating the UI text, README, the smoke test and this file.
+- Every new route goes into the access table in `tests/test_access.py`. Routes are closed by default, and opening one is the exception.
+- Do not change the exposure-mode semantics without updating the UI text, README, the access table and this file.
 - The repo is public. No device names, IP addresses or personal data in code, commits, issues or screenshots.
 
 ### Architecture
 
 - Keep the single-worker constraint.
+- Put new code into the module of its area in `daytree/`. `web.py` only joins the areas, and `core.py` stays free of
+  Flask.
 - Keep dependencies minimal; every new package must be justified (image size).
 - Background and weather lookups are the only outgoing calls besides TimeTree. They must fail quietly and never
   use Bonjourr's own backend.
@@ -267,11 +299,12 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Settle open questions in an issue before building it.
 - Use one branch per issue, for example `feature/19-waste-bins`. It goes by pull request into `dev`, then `dev` goes
   into `main`. The pull request closes the issue with `Closes #19`.
-- The owner approves every merge.
+- A pull request into `dev` is merged as soon as its checks pass, so the owner can test it on the test box. Merges
+  into `main` and GitHub releases need the owner's approval.
 
 ### Quality
 
-- When you finish a task, run `tests/smoke_test.py`. It needs Linux.
+- When you finish a task, run `pytest`. CI runs it on Linux, where the file-mode and tunnel tests are not skipped.
 - Every bug gets a test: reproduce the fault first, then fix it.
 - A fix is finished only after it was checked in the real app. Say plainly what could not be checked.
 - Check `README.md` and `CHANGELOG.md` after every change, and correct them when they no longer match the app.
@@ -279,16 +312,22 @@ dependencies give. After a change, update section 4 of this file with what you a
 
 ### Releases
 
-- Version numbers at release: bug fixes raise the last number (`x.x.+`), new functions the middle number (`x.+.x`)
-  and very large changes the first number (`+.x.x`). Changes to text only get no release.
-- Release steps, in this order:
-  1. Create the branch `release/x.y.z` from `dev`.
-  2. Set `VERSION` in `app.py`, and move `Unreleased` in `CHANGELOG.md` to a section with the version and date.
-  3. Run `tests/smoke_test.py`, and check `README.md` and the changelog section against the app.
-  4. Merge by pull request into `dev`, then `dev` into `main`.
-  5. Tag the merge commit on `main` with an annotated tag: `git tag -a vx.y.z -m "Release x.y.z"`.
-  6. Publish a GitHub release. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release. From 1.0.0 on name it
-     `vx.y.z` and publish it as a normal release. Use the changelog section as the text and add upgrade notes.
+- Every issue that changes what users get raises the version in its own branch: bug fixes raise the last number
+  (`x.x.+`), new functions the middle number (`x.+.x`) and very large changes the first number (`+.x.x`). Refactoring,
+  tests, CI and changes to text only raise nothing; their notes, if any, wait under `Unreleased` for the next version.
+- Steps in the issue's branch, before the pull request:
+  1. Set `VERSION` in `daytree/__init__.py`.
+  2. Move the notes under `Unreleased` in `CHANGELOG.md` to a section with the version and date, start it with one
+     sentence for users, and add the compare link.
+  3. Run `pytest`, and check `README.md` and the changelog section against the app.
+- After the pull request is merged into `dev`, tag the merge commit with an annotated tag and push it:
+  `git tag -a vx.y.z -m "Release x.y.z"`.
+- `dev` goes into `main` only when the owner says so. Then:
+  1. Run `pytest`, and check `README.md` and `CHANGELOG.md` against the app.
+  2. Merge `dev` into `main` by pull request.
+  3. Publish a GitHub release for the newest version. Below 1.0.0 name it `vx.y.z (Beta)` and mark it as pre-release.
+     From 1.0.0 on name it `vx.y.z` and publish it as a normal release. Use every changelog section since the last
+     GitHub release as the text, and add upgrade notes.
 
 ---
 

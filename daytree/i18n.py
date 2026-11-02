@@ -1,4 +1,7 @@
 """UI translations. English is the source language: every string is its own key."""
+from flask import request
+
+from daytree.core import LANGUAGES, settings
 
 GERMAN = {
     # Homepage
@@ -166,6 +169,38 @@ GERMAN = {
     "by": "von",
     "Design inspired by": "Design inspiriert von",
     "Support Daytree": "Daytree unterstützen",
+    # Settings: padlock
+    "Padlock": "Schloss",
+    "On": "An",
+    "New password": "Neues Passwort",
+    "Repeat password": "Passwort wiederholen",
+    "Set password": "Passwort festlegen",
+    "Change password": "Passwort ändern",
+    "Lock now": "Jetzt sperren",
+    "SETTINGS_LOCK in docker-compose.yml turns the padlock on. It closes by itself after 30 minutes without use.":
+        "SETTINGS_LOCK in der docker-compose.yml schaltet das Schloss ein. Es schließt sich nach 30 Minuten ohne Nutzung von selbst.",
+    "Settings are locked": "Einstellungen sind gesperrt",
+    "Enter the password to open them.": "Gib das Passwort ein, um sie zu öffnen.",
+    "Set a password": "Passwort festlegen",
+    "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
+        "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
+    "Unlock": "Entsperren",
+    # Settings: API tokens
+    "API tokens": "API-Tokens",
+    "New token “{name}”": "Neues Token „{name}“",
+    "Copy the token now. It is not shown again.": "Kopiere das Token jetzt. Es wird nicht noch einmal angezeigt.",
+    "Read only": "Nur lesen",
+    "Read and write": "Lesen und schreiben",
+    "Created {date}": "Erstellt {date}",
+    "Last used {date}": "Zuletzt genutzt {date}",
+    "Never used": "Nie genutzt",
+    "Revoke this token? Apps using it lose access.": "Dieses Token widerrufen? Apps, die es nutzen, verlieren den Zugriff.",
+    "Revoke": "Widerrufen",
+    "Name": "Name",
+    "Access": "Zugriff",
+    "Create token": "Token erstellen",
+    "Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.":
+        "Apps senden das Token im Header Authorization: Bearer <token>. Im Heimnetz braucht Lesen kein Token, Schreiben außerhalb der Startseite schon.",
     # Messages
     "Enter e-mail and password.": "Gib E-Mail und Passwort ein.",
     "Login failed: {error}": "Anmeldung fehlgeschlagen: {error}",
@@ -176,6 +211,14 @@ GERMAN = {
     "Invalid hostname.": "Ungültiger Hostname.",
     "Enter the tunnel token first to enable the tunnel.": "Gib zuerst das Tunnel-Token ein, um den Tunnel zu aktivieren.",
     "Sharing settings saved.": "Freigabe-Einstellungen gesichert.",
+    "Wrong password.": "Falsches Passwort.",
+    "Too many wrong passwords. Try again in a minute.": "Zu viele falsche Passwörter. Versuche es in einer Minute erneut.",
+    "Password saved.": "Passwort gesichert.",
+    "The password needs at least {count} characters.": "Das Passwort braucht mindestens {count} Zeichen.",
+    "The passwords do not match.": "Die Passwörter stimmen nicht überein.",
+    "Enter a name for the token.": "Gib einen Namen für das Token ein.",
+    "Too many tokens. Revoke one first.": "Zu viele Tokens. Widerrufe zuerst eines.",
+    "Token revoked.": "Token widerrufen.",
     "Please configure credentials and calendar under Settings": "Bitte Zugangsdaten und Kalender in den Einstellungen eintragen",
     "Timed out after 10 minutes": "Abbruch nach 10 Minuten",
     "unknown error": "Unbekannter Fehler",
@@ -184,3 +227,20 @@ GERMAN = {
 
 def translate(text, language):
     return GERMAN.get(text, text) if language == "de" else text
+
+
+def language():
+    if settings["language"] in LANGUAGES:
+        return settings["language"]
+    if request.cookies.get("lang") in LANGUAGES:     # set by the homepage from the browser language
+        return request.cookies["lang"]
+    return request.accept_languages.best_match(LANGUAGES) or LANGUAGES[0]
+
+
+def _(text):
+    return translate(text, language())
+
+
+def hours(minutes):
+    value = f"{minutes / 60:g}"
+    return f"{value.replace('.', ',')} Std." if language() == "de" else f"{value} h"

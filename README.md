@@ -66,7 +66,9 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
 - **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
+- **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
+- **API:** a JSON API for tasks and events, with tokens you create and revoke in the settings.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
 ## Quick start
@@ -167,6 +169,30 @@ Daytree calls a few outside services: TimeTree for your calendar, [Open-Meteo](h
 you turn it on, and [Lorem Picsum](https://picsum.photos/) for photos. Displays load the photos directly from Lorem
 Picsum, and fonts other than the system font from Google Fonts.
 
+## API
+
+Apps and scripts can use the JSON API under `/api/`. On your home network, reading needs no token. Writing needs an
+API token, unless it comes from the homepage itself.
+
+1. In the settings, under **API tokens**, enter a name, choose *Read only* or *Read and write*, and select
+   **Create token**.
+2. Copy the token. It is shown only once, and Daytree keeps only a hash of it.
+3. Send it in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      -d '{"title": "Buy milk"}' http://<host>:8080/api/tasks
+```
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …}` |
+| `/api/tasks/<id>` | `PATCH`, `DELETE` | Mark done with `{"done": true}`, delete |
+| `/api/events` | `GET` | Events of today and the next 7 days |
+| `/api/status` | `GET` | Last sync and tunnel status |
+
+Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Tokens do not
+open anything through the Cloudflare tunnel.
+
 ## Configuration
 
 Nearly everything is set in the app. Only host settings go into a `.env` file next to `docker-compose.yml`. Apply
@@ -180,6 +206,7 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
+| `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
@@ -201,6 +228,21 @@ is not affected by a changed host port.
 - Anyone with both volumes, or with shell access to the running container, can decrypt the settings. The TimeTree
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
+
+### Settings padlock
+
+Anyone on your home network can open the settings. To protect them with a password, set `SETTINGS_LOCK=true` in the
+`.env` file and run `docker compose up -d`.
+
+- The next visit to the settings asks for a new password. **Until a password is set, anyone on your home network can
+  set it first**, so set it right after turning the padlock on.
+- Only a scrypt hash of the password is stored, inside the encrypted settings.
+- A browser stays unlocked until you select **Lock now**, the app restarts, or 30 minutes pass without use. After five
+  wrong passwords, unlocking is blocked for a minute.
+- The homepage, `/kiosk`, tasks and the ICS feed stay usable without the password.
+
+Forgot the password? Set `SETTINGS_LOCK=false`, run `docker compose up -d`, set a new password under **Padlock** in
+the settings, then turn the padlock on again.
 
 ## Backups and upgrades
 
@@ -237,26 +279,26 @@ Named volumes let the non-root container user (uid 1000) write. If you switch to
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-python tests/smoke_test.py
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
 docker exec -i daytree python - < tests/port_check.py
 ```
 
 | Test | Requirements | Covers |
 |---|---|---|
-| `tests/smoke_test.py` | Linux | Encryption, settings, exposure modes, ICS repair and tunnel handling. TimeTree and `cloudflared` are mocked. |
+| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, exposure mode and token. TimeTree, `cloudflared` and the web services are mocked. |
 | `tests/port_check.py` | Running container, mode *Nothing* or *ICS file only* | Internal and public port detection against real gunicorn. |
 
-Both print `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
+`port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.
 
 | Branch | Purpose |
 |---|---|
-| `main` | Released versions only. Every release is a tagged commit. |
+| `main` | Released versions only. Each one has a GitHub release. |
 | `dev` | Integration branch. All work starts here, and pull requests target it. |
 
-Versions follow [Semantic Versioning](https://semver.org/). To release, record the changes in
-[`CHANGELOG.md`](CHANGELOG.md), merge `dev` into `main` with a pull request, and tag the result.
+Versions follow [Semantic Versioning](https://semver.org/). Every change users notice gets its own version on `dev`,
+with a section in [`CHANGELOG.md`](CHANGELOG.md) and a tag. Merging `dev` into `main` publishes them as a release.
 
 ## Credits
 
