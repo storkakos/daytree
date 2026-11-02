@@ -27,8 +27,12 @@ TABLE = {
     ("GET", "/api/background"):                  (OK, OK, 404, 404, OK, UNAUTHORIZED),
     ("GET", "/api/status"):                      (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("POST", "/api/background/refresh"):         (OK, 403, 404, 404, 404, UNAUTHORIZED),
+    ("GET", "/api/calendars"):                   (OK, OK, 404, 404, 404, UNAUTHORIZED),
+    ("GET", "/api/calendars/fam123/events"):     (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("GET", "/api/tasks"):                       (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("POST", "/api/tasks"):                      (OK, OK, 404, 404, 404, UNAUTHORIZED),
+    ("GET", "/api/tasks/1"):                     (OK, OK, 404, 404, 404, UNAUTHORIZED),
+    ("PUT", "/api/tasks/1"):                     (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("PATCH", "/api/tasks/1"):                   (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("DELETE", "/api/tasks/1"):                  (OK, OK, 404, 404, 404, UNAUTHORIZED),
     ("GET", "/settings"):                        (OK, PADLOCK, 404, 404, 404, 404),
@@ -104,8 +108,12 @@ TOKENS = {
     ("GET", "/api/background"):                  (OK, OK, OK, UNAUTHORIZED),
     ("GET", "/api/status"):                      (OK, OK, OK, UNAUTHORIZED),
     ("POST", "/api/background/refresh"):         (403, 403, OK, UNAUTHORIZED),
+    ("GET", "/api/calendars"):                   (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/calendars/fam123/events"):     (OK, OK, OK, UNAUTHORIZED),
     ("GET", "/api/tasks"):                       (OK, OK, OK, UNAUTHORIZED),
     ("POST", "/api/tasks"):                      (403, 403, OK, UNAUTHORIZED),
+    ("GET", "/api/tasks/1"):                     (OK, OK, OK, UNAUTHORIZED),
+    ("PUT", "/api/tasks/1"):                     (403, 403, OK, UNAUTHORIZED),
     ("PATCH", "/api/tasks/1"):                   (403, 403, OK, UNAUTHORIZED),
     ("DELETE", "/api/tasks/1"):                  (403, 403, OK, UNAUTHORIZED),
     ("GET", "/settings"):                        (OK, OK, OK, OK),
@@ -151,8 +159,10 @@ PUBLIC_TOKENS = {
     ("GET", "/api/events"):                      (OK, OK, OK, UNAUTHORIZED),
     ("GET", "/api/status"):                      (404, OK, OK, UNAUTHORIZED),
     ("POST", "/api/background/refresh"):         (404, 403, OK, UNAUTHORIZED),
+    ("GET", "/api/calendars"):                   (404, OK, OK, UNAUTHORIZED),
     ("GET", "/api/tasks"):                       (404, OK, OK, UNAUTHORIZED),
     ("POST", "/api/tasks"):                      (404, 403, OK, UNAUTHORIZED),
+    ("PUT", "/api/tasks/1"):                     (404, 403, OK, UNAUTHORIZED),
     ("PATCH", "/api/tasks/1"):                   (404, 403, OK, UNAUTHORIZED),
     ("DELETE", "/api/tasks/1"):                  (404, 403, OK, UNAUTHORIZED),
     ("GET", "/settings"):                        (404, 404, 404, 404),
@@ -183,7 +193,13 @@ def test_static_files_belong_to_the_homepage(stubbed, areas, expected):
 
 def test_every_route_is_in_the_tables():
     rules = {(m, r.rule) for r in app.url_map.iter_rules() if r.endpoint != "static" for m in r.methods - {"HEAD", "OPTIONS"}}
-    listed = {(m, p.split("?")[0].replace("/api/tasks/1", "/api/tasks/<task_id>")) for m, p in TABLE}
+    names = {"/api/tasks/1": "/api/tasks/<task_id>", "/api/calendars/fam123/": "/api/calendars/<calendar_id>/"}
+    listed = set()
+    for method, path in TABLE:
+        path = path.split("?")[0]
+        for example, rule in names.items():
+            path = path.replace(example, rule)
+        listed.add((method, path))
     assert rules == listed, rules ^ listed
     assert set(TOKENS) <= set(TABLE) and set(PUBLIC_TOKENS) <= set(TABLE)
 

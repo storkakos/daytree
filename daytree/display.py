@@ -17,7 +17,7 @@ from daytree.auth import is_public
 from daytree.core import (BACKGROUND_FILE, DEFAULTS, LANGUAGES, SECRET_KEYS, WASTE_FILE, effective_timezone, needs_setup,
                           read_encrypted, settings)
 from daytree.i18n import _, hours, language
-from daytree.sync import local_time, occurrences
+from daytree.sync import as_json, local_time, occurrences
 
 bp = Blueprint("display", __name__)
 
@@ -122,10 +122,7 @@ def api_config():
 @bp.get("/api/events")
 def api_events():
     today = date.today()
-    events = occurrences(today, today + timedelta(days=8))
-    return jsonify(events=[
-        {**e, "date": e["date"].isoformat(), "end_date": e["end_date"].isoformat(), "sort": None} for e in events
-    ])
+    return jsonify(events=as_json(occurrences(today, today + timedelta(days=8))))
 
 
 # ---------------------------------------------------------------- waste collection

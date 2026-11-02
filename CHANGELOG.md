@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-02
+
+The API covers calendars and every task operation.
+
+### Added
+
+- `GET /api/calendars` lists the synced calendar, and `GET /api/calendars/<id>/events` returns its events for a date
+  range of up to 366 days.
+- `GET` and `PUT` for a single task under `/api/tasks/<id>`. `PATCH` can change the title too, and `POST` can create
+  a task that is already done.
+
+### Changed
+
+- The task API answers 400 for a body that is not a JSON object or has a `done` that is not true or false.
+
 ## [0.16.0] - 2026-11-02
 
 You choose exactly what the tunnel shares.
@@ -153,7 +168,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.16.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.17.0...dev
+[0.17.0]: https://github.com/storkakos/daytree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/storkakos/daytree/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/storkakos/daytree/compare/v0.14.0...v0.15.0

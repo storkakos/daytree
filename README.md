@@ -69,7 +69,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
-- **API:** a JSON API for tasks and events, with tokens you create and revoke in the settings.
+- **API:** a JSON API for calendars, events and tasks, with tokens you create and revoke in the settings.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
 ## Quick start
@@ -187,9 +187,10 @@ curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …}` |
-| `/api/tasks/<id>` | `PATCH`, `DELETE` | Mark done with `{"done": true}`, delete |
-| `/api/events` | `GET` | Events of today and the next 7 days |
+| `/api/calendars` | `GET` | The synced calendars with `id` and `name` |
+| `/api/calendars/<id>/events` | `GET` | Events from `?from=` up to `?to=` (ISO dates, at most 366 days). Default: today and the next 7 days |
+| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …, "done": false}` |
+| `/api/tasks/<id>` | `GET`, `PUT`, `PATCH`, `DELETE` | Read one task, replace it, change `title` or `done`, delete it |
 | `/api/status` | `GET` | Last sync and tunnel status |
 
 Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Through the
