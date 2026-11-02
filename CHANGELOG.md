@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-02
+
+The bins move next to the days they belong to.
+
 ### Changed
 
 - Waste bins moved from their own panel into Today and Next 7 days, at the right of each day.
@@ -104,7 +108,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.12.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.13.0...dev
+[0.13.0]: https://github.com/storkakos/daytree/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/storkakos/daytree/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/storkakos/daytree/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/storkakos/daytree/compare/v0.9.0...v0.10.0
