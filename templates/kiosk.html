@@ -44,17 +44,19 @@
   #week { flex-grow:1.4; }
   .column { flex:1 1 0; min-width:0; min-height:0; display:flex; flex-direction:column; }
   main > * + * { margin-left:.9rem; }
-  #forecast, #waste { flex:none; padding:.9rem .8rem .6rem; }
-  #forecast h2, #waste h2 { padding-left:.3rem; }
+  #forecast { flex:none; padding:.9rem .8rem .6rem; }
+  #forecast h2 { padding-left:.3rem; }
   .column section[hidden] { display:none; }
   .column section:not([hidden]) ~ section { margin-top:.9rem; }
-  #forecast-list, #waste-list { flex:none; display:flex; overflow-x:auto; overflow-y:hidden; }
+  #forecast-list { flex:none; display:flex; overflow-x:auto; overflow-y:hidden; }
   .slot { flex:1 0 2rem; text-align:center; white-space:nowrap; }
   .slot small { display:block; color:var(--muted); font-size:.8rem; }
   .weather-icon { display:block; width:1.7rem; height:1.7rem; margin:.1rem auto; }
   #weather .weather-icon { display:inline-block; width:1.3em; height:1.3em; margin:0 .2em 0 0; vertical-align:-.3em; }
-  .bins { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; min-height:1.8rem; color:var(--muted); }
+  #today h2 { display:flex; justify-content:space-between; align-items:center; }
+  .bins { flex:none; display:flex; align-items:center; }
   .bin { width:1.35rem; height:1.35rem; fill:currentColor; stroke:rgba(255,255,255,.55); stroke-width:.8; }
+  .bin + .bin { margin-left:.2rem; }
   @media (orientation: portrait) {
     /* Today and tasks take what they need up to a limit; the week view gets all remaining space */
     main { flex-direction:column; }
@@ -88,6 +90,7 @@
   .day + .day { border-top:.5px solid var(--line); }
   .day h3 { flex:0 0 4.5em; margin:0; font-size:1rem; font-weight:600; line-height:1.3; }
   .day h3 small { display:block; color:var(--muted); font-weight:400; font-size:.8rem; }
+  .day .bins { margin-left:.5rem; }
   .day .item { display:flex; align-items:baseline; }
   .day .item > * + * { margin-left:.5rem; }
   .day .item time { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -169,16 +172,13 @@
   </header>
 
   <main class="{{ 'no-tasks' if not show_tasks }}">
-    {% set waste_panel %}<section id="waste" class="glass" hidden><h2>{{ _("Waste collection") }}</h2><ul id="waste-list"></ul></section>{% endset %}
     <div id="left" class="column">
       <section id="forecast" class="glass" hidden><h2>{{ _("Weather forecast") }}</h2><ul id="forecast-list"></ul></section>
-      {% if not show_tasks %}{{ waste_panel }}{% endif %}
-      <section id="today" class="glass"><h2>{{ _("Today") }}</h2><ul id="today-list"></ul></section>
+      <section id="today" class="glass"><h2>{{ _("Today") }}<span id="today-bins" class="bins"></span></h2><ul id="today-list"></ul></section>
     </div>
     <section id="week" class="glass"><h2>{{ _("Next 7 days") }}</h2><ul id="week-list"></ul></section>
     {% if show_tasks %}
     <div id="right" class="column">
-    {{ waste_panel }}
     <section id="tasks" class="glass">
       <h2>{{ _("Tasks") }}</h2>
       <ul id="task-list"></ul>
@@ -269,7 +269,7 @@
     const [month, day, year] = keyFormat.format(value).split('/');
     return `${year}-${month}-${day}`;
   };
-  let events = [];
+  let events = [], waste = {};
   const dismissed = new Set();
 
   function applyConfig() {
@@ -314,6 +314,7 @@
   function renderToday() {
     const now = Date.now(), key = dayKey(now), list = $('today-list');
     const today = events.filter(e => e.date <= key && e.end_date >= key);
+    fill($('today-bins'), ...(waste[key] || []).map(bin));
     const next = today.find(e => !e.all_day && e.start_ts * 1000 > now);
     fill(list, ...today.map(e => {
       const ended = !e.all_day && e.end_ts * 1000 < now;
@@ -341,6 +342,11 @@
       });
       if (!entries.length) items.append(make('div', 'empty', '–'));
       row.append(heading, items);
+      if (waste[key] && waste[key].length) {
+        const bins = make('span', 'bins');
+        bins.append(...waste[key].map(bin));
+        row.append(bins);
+      }
       return row;
     }));
   }
@@ -419,14 +425,9 @@
   async function loadWaste() {
     const data = await getJson('/api/waste');
     if (!data) return;
-    const days = data.enabled ? data.days : [];
-    fill($('waste-list'), ...days.map(d => {
-      const box = make('li', 'slot'), bins = make('div', 'bins', d.bins.length ? undefined : '–');
-      d.bins.forEach(item => bins.append(bin(item)));
-      box.append(make('small', '', weekdayLabel.format(addDays(d.date, 0))), bins);
-      return box;
-    }));
-    $('waste').hidden = !days.length;
+    waste = {};
+    (data.enabled ? data.days : []).forEach(d => { waste[d.date] = d.bins; });
+    render();
   }
 
   let shownPhoto = null;
