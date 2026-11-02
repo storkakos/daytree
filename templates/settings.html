@@ -316,6 +316,41 @@
     <p>{{ _("SETTINGS_LOCK in docker-compose.yml turns the padlock on. It closes by itself after 30 minutes without use.") }}</p>
   </section>
 
+  <section class="group" id="tokens">
+    <h2>{{ _("API tokens") }}</h2>
+    {% if new_token %}
+    <div class="card fresh">
+      <div class="row stack">
+        <label for="new-token">{{ _("New token “{name}”").format(name=new_token.name) }}</label>
+        <div class="row" style="padding:0;min-height:0"><input class="mono" id="new-token" readonly value="{{ new_token.value }}"><button type="button" class="copy" data-copy="new-token">{{ _("Copy") }}</button></div>
+      </div>
+    </div>
+    <p class="warn">{{ _("Copy the token now. It is not shown again.") }}</p>
+    {% endif %}
+    <div class="card"{% if new_token %} style="margin-top:12px"{% endif %}>
+      {% for t in api_tokens %}
+      <div class="row">
+        <div><strong class="name">{{ t.name }}</strong><small>{{ _("Read and write") if t.write else _("Read only") }} · {{ _("Created {date}").format(date=t.created) }} · {{ _("Last used {date}").format(date=t.last_used) if t.last_used else _("Never used") }}</small></div>
+        <form method="post" action="{{ url_for('admin.settings_token_revoke') }}" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('Revoke this token? Apps using it lose access.') }}">
+          <input type="hidden" name="id" value="{{ t.id }}"><button class="copy destructive">{{ _("Revoke") }}</button>
+        </form>
+      </div>
+      {% endfor %}
+      <form method="post" action="{{ url_for('admin.settings_token_create') }}">
+        <div class="row"><label for="token_name">{{ _("Name") }}</label><input id="token_name" name="name" maxlength="40" placeholder="Home Assistant" required></div>
+        <div class="row">
+          <span class="label">{{ _("Access") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="access" value="read" checked><span>{{ _("Read only") }}</span></label>
+            <label><input type="radio" name="access" value="write"><span>{{ _("Read and write") }}</span></label>
+          </div>
+        </div>
+        <button class="action">{{ _("Create token") }}</button>
+      </form>
+    </div>
+    <p>{{ _("Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.") }}</p>
+  </section>
+
   <footer class="about">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Daytree" width="56" height="56">
     <div class="links">
@@ -342,6 +377,8 @@
     document.documentElement.classList.add('embedded');
     document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); notify('close-settings'); });
   }
+  // A new token is shown once: reloading must not create another one
+  if (document.getElementById('new-token')) history.replaceState(null, '', '{{ url_for('admin.settings_page') }}#tokens');
   // A saved form reloads this page, so the homepage around it hears about the change here
   if (location.search.includes('updated')) {
     notify('settings-changed');

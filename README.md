@@ -68,6 +68,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
+- **API:** a JSON API for tasks and events, with tokens you create and revoke in the settings.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
 ## Quick start
@@ -167,6 +168,30 @@ app decides what is reachable there, regardless of how the tunnel is configured 
 Daytree calls a few outside services: TimeTree for your calendar, [Open-Meteo](https://open-meteo.com/) for weather if
 you turn it on, and [Lorem Picsum](https://picsum.photos/) for photos. Displays load the photos directly from Lorem
 Picsum, and fonts other than the system font from Google Fonts.
+
+## API
+
+Apps and scripts can use the JSON API under `/api/`. On your home network, reading needs no token. Writing needs an
+API token, unless it comes from the homepage itself.
+
+1. In the settings, under **API tokens**, enter a name, choose *Read only* or *Read and write*, and select
+   **Create token**.
+2. Copy the token. It is shown only once, and Daytree keeps only a hash of it.
+3. Send it in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      -d '{"title": "Buy milk"}' http://<host>:8080/api/tasks
+```
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …}` |
+| `/api/tasks/<id>` | `PATCH`, `DELETE` | Mark done with `{"done": true}`, delete |
+| `/api/events` | `GET` | Events of today and the next 7 days |
+| `/api/status` | `GET` | Last sync and tunnel status |
+
+Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Tokens do not
+open anything through the Cloudflare tunnel.
 
 ## Configuration
 

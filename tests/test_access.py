@@ -37,6 +37,8 @@ TABLE = {
     ("POST", "/settings/unlock"):                (OK, OK, 404, 404, 404),
     ("POST", "/settings/lock"):                  (OK, 403, 404, 404, 404),
     ("POST", "/settings/password"):              (OK, 403, 404, 404, 404),
+    ("POST", "/settings/tokens"):                (OK, 403, 404, 404, 404),
+    ("POST", "/settings/tokens/revoke"):         (OK, 403, 404, 404, 404),
     ("POST", "/sync"):                           (OK, 403, 404, 404, 404),
     ("GET", "/ping"):                            (200, 200, 200, 200, 200),
     ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 404, 200, 200),
@@ -82,6 +84,63 @@ def test_access(stubbed, monkeypatch, method, path, side, mode, expected):
     headers = {**ORIGIN, **extra.get("headers", {})}
     r = stubbed.open(path, method=method, headers=headers, environ_overrides=extra.get("environ_overrides"))
     assert r.status_code == expected
+
+
+READ, WRITE, WRONG = "dt_read-token", "dt_write-token", "dt_wrong-token"
+UNAUTHORIZED = 401
+
+# (method, path): status on the internal side without an Origin header, sending no token, a read-only token,
+# a read-write token, or an unknown token. Tokens count only for /api/; elsewhere the header is ignored.
+TOKENS = {
+    ("GET", "/"):                                (OK, OK, OK, OK),
+    ("GET", "/kiosk"):                           (OK, OK, OK, OK),
+    ("GET", "/api/config"):                      (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/events"):                      (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/weather"):                     (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/waste"):                       (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/background"):                  (OK, OK, OK, UNAUTHORIZED),
+    ("GET", "/api/status"):                      (OK, OK, OK, UNAUTHORIZED),
+    ("POST", "/api/background/refresh"):         (403, 403, OK, UNAUTHORIZED),
+    ("GET", "/api/tasks"):                       (OK, OK, OK, UNAUTHORIZED),
+    ("POST", "/api/tasks"):                      (403, 403, OK, UNAUTHORIZED),
+    ("PATCH", "/api/tasks/1"):                   (403, 403, OK, UNAUTHORIZED),
+    ("DELETE", "/api/tasks/1"):                  (403, 403, OK, UNAUTHORIZED),
+    ("GET", "/settings"):                        (OK, OK, OK, OK),
+    ("POST", "/settings/login"):                 (403, 403, 403, 403),
+    ("POST", "/settings/save"):                  (403, 403, 403, 403),
+    ("POST", "/settings/display"):               (403, 403, 403, 403),
+    ("POST", "/settings/waste"):                 (403, 403, 403, 403),
+    ("POST", "/settings/tunnel"):                (403, 403, 403, 403),
+    ("POST", "/settings/unlock"):                (403, 403, 403, 403),
+    ("POST", "/settings/lock"):                  (403, 403, 403, 403),
+    ("POST", "/settings/password"):              (403, 403, 403, 403),
+    ("POST", "/settings/tokens"):                (403, 403, 403, 403),
+    ("POST", "/settings/tokens/revoke"):         (403, 403, 403, 403),
+    ("POST", "/sync"):                           (403, 403, 403, 403),
+    ("GET", "/ping"):                            (200, 200, 200, 200),
+    ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 200, 200),
+    ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 403, 403),
+}
+
+
+@pytest.mark.parametrize("method, path, credential, expected", [
+    pytest.param(method, path, credential, status, id=f"{method} {path} {credential or 'no token'}")
+    for (method, path), row in TOKENS.items() for credential, status in zip((None, READ, WRITE, WRONG), row)
+])
+def test_api_tokens(stubbed, method, path, credential, expected):
+    core.settings["api_tokens"] = [
+        {"id": "r", "name": "read", "hash": auth.token_hash(READ), "write": False, "created": "", "last_used": None},
+        {"id": "w", "name": "write", "hash": auth.token_hash(WRITE), "write": True, "created": "", "last_used": None},
+    ]
+    headers = {"Authorization": f"Bearer {credential}"} if credential else {}
+    assert stubbed.open(path, method=method, headers=headers).status_code == expected
+
+
+def test_every_route_is_in_the_tables():
+    rules = {(m, r.rule) for r in app.url_map.iter_rules() if r.endpoint != "static" for m in r.methods - {"HEAD", "OPTIONS"}}
+    listed = {(m, p.split("?")[0].replace("/api/tasks/1", "/api/tasks/<task_id>")) for m, p in TABLE}
+    assert rules == listed, rules ^ listed
+    assert {k for k in TOKENS} <= set(TABLE)
 
 
 @pytest.mark.parametrize("mode", core.PUBLIC_MODES)

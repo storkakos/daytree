@@ -1,7 +1,7 @@
 """The settings pages: TimeTree login, sync, homepage appearance, waste collection and sharing."""
 import re
 import secrets
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import available_timezones
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
@@ -16,6 +16,7 @@ from daytree.i18n import _, hours
 bp = Blueprint("admin", __name__)
 
 MIN_PASSWORD = 8
+MAX_TOKENS = 20
 TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", "Australia/", "Europe/", "Indian/", "Pacific/", "UTC")
 
 
@@ -35,7 +36,12 @@ def sync_now():
 
 @bp.get("/settings")
 def settings_page():
+    return _render_settings()
+
+
+def _render_settings(**extra):
     local, pub = ics_urls()
+    tokens = [{k: v for k, v in t.items() if k != "hash"} for t in settings["api_tokens"]]
     return render_template(
         "settings.html", s=display.view(), state=sync.state, running=sync.lock.locked(),
         next_run=datetime.fromtimestamp(sync.next_due).strftime("%H:%M") if sync.next_due else None,
@@ -44,6 +50,7 @@ def settings_page():
         default_timezone=DEFAULT_TZ or "UTC", fonts=display.FONTS, version=VERSION,
         waste=[(title, display.waste_color(title)) for title in display.waste_types()],
         ics_local=local, ics_pub=pub, tunnel=tunnel.status, public_port=PUBLIC_PORT, lock_enabled=auth.SETTINGS_LOCK,
+        api_tokens=tokens, **extra,
     )
 
 
@@ -291,3 +298,34 @@ def _new_password_error(password, confirm):
     if password != confirm:
         return _("The passwords do not match.")
     return None
+
+
+@bp.post("/settings/tokens")
+def settings_token_create():
+    """Create an API token. Its value is shown once, in this answer, and only its hash is stored."""
+    name = request.form.get("name", "").strip()[:40]
+    if not name:
+        flash(_("Enter a name for the token."), "err")
+        return redirect(url_for("admin.settings_page"))
+    if len(settings["api_tokens"]) >= MAX_TOKENS:
+        flash(_("Too many tokens. Revoke one first."), "err")
+        return redirect(url_for("admin.settings_page"))
+    value = "dt_" + secrets.token_urlsafe(32)
+    settings["api_tokens"].append({
+        "id": secrets.token_hex(6), "name": name, "hash": auth.token_hash(value),
+        "write": request.form.get("access") == "write", "created": date.today().isoformat(), "last_used": None,
+    })
+    save_settings(settings)
+    return _render_settings(new_token={"name": name, "value": value})
+
+
+@bp.post("/settings/tokens/revoke")
+def settings_token_revoke():
+    token_id = request.form.get("id", "")
+    remaining = [t for t in settings["api_tokens"] if t["id"] != token_id]
+    if len(remaining) == len(settings["api_tokens"]):
+        abort(404)
+    settings["api_tokens"] = remaining
+    save_settings(settings)
+    flash(_("Token revoked."), "ok")
+    return redirect(url_for("admin.settings_page"))
