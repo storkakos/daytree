@@ -8,6 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+{% if request.path == '/' %}<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">{% endif %}
+<meta name="theme-color" content="#14181d">
 <title>{{ s.calendar_name or 'Daytree' }}</title>
 <style>
   :root { --glass:rgba(22,24,28,.38); --glass-line:rgba(255,255,255,.14); --fg:#fff; --muted:rgba(255,255,255,.72); --line:rgba(255,255,255,.15); --accent:#7cc7ff; --solid:#fff; --solid-fg:#1c1c1e; --solid-muted:#6c6c70; --blue:#007aff;

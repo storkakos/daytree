@@ -106,6 +106,15 @@ and no way into the settings. This only limits what the page offers: port 8080 s
 | **Monitor in portrait** | Rotate the screen in the operating system. The layout follows automatically. |
 | **iPad or Android tablet** | Open the homepage and add it to the home screen. Use the device's single-app mode to keep it on screen. |
 
+### Installing as an app
+
+On a phone, tablet or computer, the homepage can be installed like an app, without the address bar: in Chrome or
+Edge choose *Install app* or *Add to home screen*, in Safari *Share → Add to Home Screen*. Browsers allow this only over
+HTTPS, so open Daytree through your [reverse proxy](#https-on-your-home-network) or the Cloudflare tunnel first.
+The app opens the normal homepage with the settings; `/kiosk` is not installable.
+
+There is no offline mode: without a connection the app shows that Daytree is unreachable instead of old events.
+
 ## Subscribing from calendar apps
 
 Select the gear icon, copy the **ICS URL** from the **Calendar subscription** section, and add it to your app:
