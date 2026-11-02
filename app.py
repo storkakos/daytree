@@ -27,7 +27,7 @@ from icalendar import Calendar
 
 from i18n import translate
 
-VERSION = "0.12.0"
+VERSION = "0.13.0"
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
 ICS_FILE = DATA / "timetree.ics"
@@ -118,6 +118,7 @@ DEFAULTS = {
     "weather_forecast": "off",  # off | hours | days
     "waste_enabled": False,
     "waste_colors": {},         # collection name -> #rrggbb
+    "waste_day_before": False,  # show a bin the day before the collection instead of on it
     "background_type": "photo",  # photo | color
     "background_color": "#1c2733",
     "background_every": "hour",  # hour | day | fixed | custom
@@ -770,9 +771,10 @@ def settings_display():
 
 
 def waste_stamp():
-    """Changes with the file and the colors, so open homepages know when to redraw the bins. Reveals neither."""
+    """Changes with the file, colors and timing, so open homepages know when to redraw the bins. Reveals neither."""
     modified = WASTE_FILE.stat().st_mtime if WASTE_FILE.exists() else 0
-    return hashlib.sha256(f"{modified}{sorted(settings['waste_colors'].items())}".encode()).hexdigest()[:12]
+    state = f"{modified}{sorted(settings['waste_colors'].items())}{settings['waste_day_before']}"
+    return hashlib.sha256(state.encode()).hexdigest()[:12]
 
 
 def waste_calendar():
@@ -794,13 +796,14 @@ def waste_color(title):
 
 
 def waste_days():
-    """The collections of the next 7 days, today first, one entry per day."""
+    """The bins to show on today and the 7 days after it, one entry per day."""
     today = date.today()
-    days = {today + timedelta(days=i): [] for i in range(7)}
+    early = timedelta(days=1 if settings["waste_day_before"] else 0)
+    days = {today + timedelta(days=i): [] for i in range(8)}
     calendar = waste_calendar()
-    for event in recurring_ical_events.of(calendar).between(today, today + timedelta(days=7)) if calendar else []:
+    for event in recurring_ical_events.of(calendar).between(today, today + timedelta(days=8) + early) if calendar else []:
         start = _local(event.decoded("DTSTART"))
-        day = start.date() if isinstance(start, datetime) else start
+        day = (start.date() if isinstance(start, datetime) else start) - early
         title = str(event.get("SUMMARY", "")).strip()
         if day in days and title and title not in [item["title"] for item in days[day]]:
             days[day].append({"title": title, "color": waste_color(title)})
@@ -815,6 +818,7 @@ def settings_waste():
     if request.form.get("remove"):
         WASTE_FILE.unlink(missing_ok=True)
         settings["waste_colors"] = {}
+        settings["waste_day_before"] = False
         enabled = False
     elif upload and upload.filename:
         raw = upload.read(WASTE_MAX_BYTES + 1)
@@ -836,6 +840,8 @@ def settings_waste():
         if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
             settings["waste_colors"][title] = color
     settings["waste_enabled"] = enabled
+    if not request.form.get("remove"):
+        settings["waste_day_before"] = bool(request.form.get("waste_day_before"))
     save_settings(settings)
     if request.headers.get("X-Autosave"):
         return jsonify(message=_("Settings saved."))

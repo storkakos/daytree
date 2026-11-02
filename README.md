@@ -23,7 +23,7 @@ With tasks, reminders, a weather forecast, waste collection and beautiful photo 
 
 <br>
 
-<img src="docs/homepage-landscape.jpg" alt="Daytree homepage with today's agenda, the next 7 days and tasks on a photo background" width="100%">
+<img src="docs/homepage-landscape.jpg" alt="Daytree homepage with a weather forecast, today's agenda and the next 7 days with waste bins, and tasks on a photo background" width="100%">
 
 </div>
 
@@ -45,7 +45,8 @@ extra account, and also keeps your calendar in sync with Outlook and Google Cale
 - **Reminders:** a notice appears 30 minutes before an event starts.
 - **Weather and greeting:** current weather for your town and a personal greeting. No API key needed.
 - **Weather forecast:** the next 10 hours or 7 days, with day and night icons.
-- **Waste collection:** upload an ICS file, pick a color per collection and see small bins for the next 7 days.
+- **Waste collection:** upload an ICS file, pick a color per collection and see small bins next to the days, if you
+  like one day early as a reminder to put them out.
 - **Works on any screen:** landscape on a TV, portrait on a monitor or tablet, and a scrolling layout on phones.
   Panels adapt to their content, so a quiet day leaves more room for the week ahead.
 - **Always up to date:** an open page picks up changed settings and app updates by itself.
