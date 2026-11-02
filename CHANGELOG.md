@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Waste bins moved from their own panel into Today and Next 7 days, at the right of each day.
+
+### Added
+
+- A switch shows the bins one day earlier, on the day they have to be put out.
+
 ## [0.12.0] - 2026-11-01
 
 Daytree now shows when the bins go out.

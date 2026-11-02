@@ -100,8 +100,9 @@ GERMAN = {
     "Show waste collection": "Müllabfuhr anzeigen",
     "Calendar file (.ics)": "Kalenderdatei (.ics)",
     "Remove calendar": "Kalender entfernen",
-    "Each collection in the file gets its own color. The homepage shows a small bin on collection days.":
-        "Jede Abfuhr aus der Datei bekommt eine eigene Farbe. Die Startseite zeigt an den Abfuhrtagen eine kleine Tonne.",
+    "Show bins one day earlier": "Tonnen einen Tag vorher anzeigen",
+    "Each collection in the file gets its own color. The homepage shows a small bin next to the day.":
+        "Jede Abfuhr aus der Datei bekommt eine eigene Farbe. Die Startseite zeigt neben dem Tag eine kleine Tonne.",
     "The file is too large.": "Die Datei ist zu groß.",
     "The file is not a usable calendar.": "Die Datei ist kein brauchbarer Kalender.",
     "Font": "Schrift",

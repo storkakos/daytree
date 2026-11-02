@@ -231,9 +231,15 @@
       {% for title, color in waste %}
       <div class="row"><label for="waste_color_{{ loop.index0 }}">{{ title }}</label><input id="waste_color_{{ loop.index0 }}" class="swatch" type="color" name="waste_color_{{ loop.index0 }}" value="{{ color }}"></div>
       {% endfor %}
-      {% if waste %}<button class="action destructive" name="remove" value="1">{{ _("Remove calendar") }}</button>{% endif %}
+      {% if waste %}
+      <div class="row">
+        <label for="waste_day_before">{{ _("Show bins one day earlier") }}</label>
+        <span class="switch"><input id="waste_day_before" type="checkbox" name="waste_day_before" value="1" {{ 'checked' if s.waste_day_before }}><span></span></span>
+      </div>
+      <button class="action destructive" name="remove" value="1">{{ _("Remove calendar") }}</button>
+      {% endif %}
     </div>
-    <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin on collection days.") }}</p>
+    <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin next to the day.") }}</p>
   </form>
 
   <section class="group">
