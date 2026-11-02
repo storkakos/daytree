@@ -33,7 +33,7 @@ os.environ["PATH"] = f"{BIN}{os.pathsep}{os.environ['PATH']}"
 LEGACY = {"email": "a@b.de", "password": "PLAINPW-123", "token": "legacytoken-ABC"}
 (DATA / "settings.json").write_text(json.dumps(LEGACY))
 
-from daytree import core, display  # noqa: E402
+from daytree import auth, core, display  # noqa: E402
 from daytree.web import app  # noqa: E402
 
 ORIGIN = {"Origin": "http://localhost"}        # same-site header that passes the CSRF check
@@ -56,3 +56,5 @@ def restore_settings():
     core.apply_timezone()
     display.backgrounds.clear()
     display.weather.clear()
+    auth._sessions.clear()
+    auth._failures.update(count=0, until=0.0)

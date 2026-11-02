@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .padlock { display:flex; flex-direction:column; align-items:center; margin:44px 16px 4px; color:var(--muted); text-align:center; }
+  .padlock svg { width:56px; height:56px; color:var(--fg); }
+  .padlock h1 { margin:14px 0 6px; font-size:22px; font-weight:600; color:var(--fg); }
+  .padlock p { max-width:360px; margin:0; font-size:15px; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="padlock">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="11" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><path d="M12 15v2.5"/></svg>
+    <h1>{{ _("Set a password") if first else _("Settings are locked") }}</h1>
+    <p>{{ _("Until a password is set, anyone on your home network can set one. The settings need it from then on.") if first else _("Enter the password to open them.") }}</p>
+  </div>
+  <form method="post" action="{{ url_for('admin.settings_unlock') }}" class="group">
+    <div class="card">
+      <div class="row"><label for="password">{{ _("Password") }}</label><input id="password" name="password" type="password" autocomplete="{{ 'new-password' if first else 'current-password' }}" required autofocus{% if first %} minlength="8"{% endif %}></div>
+      {% if first %}<div class="row"><label for="confirm">{{ _("Repeat password") }}</label><input id="confirm" name="confirm" type="password" autocomplete="new-password" required></div>{% endif %}
+      <button class="action">{{ _("Set password") if first else _("Unlock") }}</button>
+    </div>
+  </form>
+<script>
+  if (top !== self) {
+    document.documentElement.classList.add('embedded');
+    document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); parent.postMessage('close-settings', location.origin); });
+  }
+</script>
+{% endblock %}

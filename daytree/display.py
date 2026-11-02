@@ -50,6 +50,7 @@ def view():
     v = {k: val for k, val in settings.items() if k not in SECRET_KEYS}
     v["has_password"] = bool(settings["password"])
     v["has_tunnel_token"] = bool(settings["tunnel_token"])
+    v["has_lock_password"] = bool(settings["lock_hash"])
     v["interval_label"] = hours(settings["interval_minutes"])
     return v
 

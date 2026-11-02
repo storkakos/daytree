@@ -52,7 +52,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 
 | Decision | Rationale |
 |---|---|
-| **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. **Do not add app-level auth unless the user asks.** |
+| **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. The one exception the owner asked for is the settings padlock (`SETTINGS_LOCK`): a password for the settings only, with no login page and no user accounts. **Do not add other app-level auth unless the user asks.** |
 | Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `daytree/i18n.py`. |
 | Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
 | Exposure mode (**off / ICS only / dashboard read-only**) is **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
@@ -103,7 +103,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 | File | Content | Protection |
 |---|---|---|
-| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
+| `/data/settings.enc` | **All** settings as one Fernet-encrypted JSON blob: TimeTree e-mail + password, selected calendar, interval, ICS token, tunnel token, scrypt hash of the padlock password, exposure mode, public hostname, language, time zone, date/time formats, tasks switch. | Encrypted, mode 600 |
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
@@ -123,15 +123,20 @@ Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated 
 | `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | only in mode `dashboard` (without tasks) |
 | `/api/tasks` (GET, POST, PATCH, DELETE) | yes | never |
 | `GET /api/config`, `/api/background`, `/api/weather`, `/api/waste` | yes | only in mode `dashboard` (the greeting name is removed) |
-| `POST /api/background/refresh` | yes | never |
-| `POST /sync` | yes | never |
-| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel` | yes | never |
+| `POST /api/background/refresh` | yes, padlock applies | never |
+| `POST /sync` | yes, padlock applies | never |
+| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password` | yes, padlock applies | never |
+| `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
 | `GET /api/status` | yes | only in mode `dashboard` |
 | `GET /calendar.ics?token=…` | yes (token required) | modes `ics` and `dashboard` (token required) |
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, in every mode |
 | anything else on public side in mode `off` | – | 404 |
 
 All state-changing requests additionally require a same-origin `Origin`/`Referer` (basic CSRF protection).
+
+"Padlock applies": with `SETTINGS_LOCK=true` these routes answer 403 until the browser is unlocked, and `GET /settings`
+shows the padlock instead. `/settings/login` and `/settings/save` stay open while the app is not set up yet, so the
+first-time setup on the homepage works.
 
 ### Key behaviours you must preserve
 
@@ -141,6 +146,9 @@ All state-changing requests additionally require a same-origin `Origin`/`Referer
   `cloudflared` **only through the child's environment** (`TIMETREE_PASSWORD`, `TUNNEL_TOKEN`), and
   `SECRET_KEY` is removed from the child environment.
 - A blank password field means "keep the stored password".
+- The padlock keeps unlocked sessions in process memory only, so a restart locks every browser. The cookie is
+  `HttpOnly` and `SameSite=Strict`; a session closes after 30 minutes without a request, with **Lock now**, or when the
+  password changes in another browser. Five wrong passwords block unlocking for 60 seconds.
 - The ICS file is replaced only if the exporter exits 0 and produced a non-empty file.
 - The sync interval defaults to 3 hours, is limited to 30–1440 minutes in 30-minute steps, and changes take effect immediately.
 - Public-side access control fails **closed** (default mode `off`); `is_public()` also treats
@@ -202,8 +210,9 @@ real TimeTree/Cloudflare credentials**.
 - Wrong key → clean abort, data untouched.
 - Login flow, calendar list (deactivated calendars filtered), calendar selection, interval clamping.
 - CSRF origin check for every state-changing route.
-- Access table: every route against the internal side and the public side (port 8081, `Cf-Ray`, `Cf-Connecting-Ip`)
-  in modes `off` / `ics` / `dashboard`, with a correct, wrong or missing ICS token.
+- Access table: every route against the internal side, the internal side with the padlock closed, and the public side
+  (port 8081, `Cf-Ray`, `Cf-Connecting-Ip`) in modes `off` / `ics` / `dashboard`, with a correct, wrong or missing ICS token.
+- Settings padlock: first password, unlock, lock, idle timeout, lockout, password change, setup while locked.
 - Tasks, languages and date formats, the waste collection calendar, and background and weather handling.
 - Tunnel token extraction from a pasted command, start/stop supervision, token delivered via `TUNNEL_TOKEN` only,
   token absent from HTML and from the encrypted file's plaintext, status `connected`.

@@ -66,6 +66,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
 - **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
+- **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
@@ -180,6 +181,7 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
+| `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
@@ -201,6 +203,21 @@ is not affected by a changed host port.
 - Anyone with both volumes, or with shell access to the running container, can decrypt the settings. The TimeTree
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
+
+### Settings padlock
+
+Anyone on your home network can open the settings. To protect them with a password, set `SETTINGS_LOCK=true` in the
+`.env` file and run `docker compose up -d`.
+
+- The next visit to the settings asks for a new password. **Until a password is set, anyone on your home network can
+  set it first**, so set it right after turning the padlock on.
+- Only a scrypt hash of the password is stored, inside the encrypted settings.
+- A browser stays unlocked until you select **Lock now**, the app restarts, or 30 minutes pass without use. After five
+  wrong passwords, unlocking is blocked for a minute.
+- The homepage, `/kiosk`, tasks and the ICS feed stay usable without the password.
+
+Forgot the password? Set `SETTINGS_LOCK=false`, run `docker compose up -d`, set a new password under **Padlock** in
+the settings, then turn the padlock on again.
 
 ## Backups and upgrades
 

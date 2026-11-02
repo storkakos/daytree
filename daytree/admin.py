@@ -7,7 +7,7 @@ from zoneinfo import available_timezones
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from icalendar import Calendar
 
-from daytree import VERSION, display, sync, tunnel
+from daytree import VERSION, auth, display, sync, tunnel
 from daytree.auth import PUBLIC_PORT
 from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_MODES, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
@@ -15,6 +15,7 @@ from daytree.i18n import _, hours
 
 bp = Blueprint("admin", __name__)
 
+MIN_PASSWORD = 8
 TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", "Australia/", "Europe/", "Indian/", "Pacific/", "UTC")
 
 
@@ -42,7 +43,7 @@ def settings_page():
         timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
         default_timezone=DEFAULT_TZ or "UTC", fonts=display.FONTS, version=VERSION,
         waste=[(title, display.waste_color(title)) for title in display.waste_types()],
-        ics_local=local, ics_pub=pub, tunnel=tunnel.status, public_port=PUBLIC_PORT,
+        ics_local=local, ics_pub=pub, tunnel=tunnel.status, public_port=PUBLIC_PORT, lock_enabled=auth.SETTINGS_LOCK,
     )
 
 
@@ -236,3 +237,57 @@ def settings_tunnel():
     tunnel.restart.set()
     flash(_("Sharing settings saved."), "ok")
     return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/unlock")
+def settings_unlock():
+    """Open the padlock. Until a password exists, the first one entered here becomes the password."""
+    password = request.form.get("password", "")
+    if not settings["lock_hash"]:
+        error = _new_password_error(password, request.form.get("confirm", ""))
+        if error:
+            flash(error, "err")
+            return redirect(url_for("admin.settings_page"))
+        settings["lock_hash"] = auth.hash_password(password)
+        save_settings(settings)
+    else:
+        result = auth.try_unlock(password)
+        if result != "ok":
+            flash(_("Too many wrong passwords. Try again in a minute.") if result == "blocked" else _("Wrong password."), "err")
+            return redirect(url_for("admin.settings_page"))
+    response = redirect(url_for("admin.settings_page"))
+    auth.open_session(response)
+    return response
+
+
+@bp.post("/settings/lock")
+def settings_lock():
+    response = redirect(url_for("admin.settings_page"))
+    auth.close_session(response)
+    return response
+
+
+@bp.post("/settings/password")
+def settings_password():
+    """Set or change the padlock password. Other unlocked browsers are locked again."""
+    password = request.form.get("password", "")
+    error = _new_password_error(password, request.form.get("confirm", ""))
+    if error:
+        flash(error, "err")
+        return redirect(url_for("admin.settings_page"))
+    settings["lock_hash"] = auth.hash_password(password)
+    save_settings(settings)
+    auth.close_other_sessions()
+    flash(_("Password saved."), "ok")
+    response = redirect(url_for("admin.settings_page"))
+    if auth.SETTINGS_LOCK and not auth.unlocked():
+        auth.open_session(response)
+    return response
+
+
+def _new_password_error(password, confirm):
+    if len(password) < MIN_PASSWORD:
+        return _("The password needs at least {count} characters.").format(count=MIN_PASSWORD)
+    if password != confirm:
+        return _("The passwords do not match.")
+    return None

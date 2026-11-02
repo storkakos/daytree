@@ -300,6 +300,22 @@
     <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
   </section>
 
+  <section class="group">
+    <h2>{{ _("Padlock") }}</h2>
+    <div class="card">
+      <div class="row"><span class="label">{{ _("Status") }}</span><span class="value">{{ _("On") if lock_enabled else _("Off") }}</span></div>
+      <form method="post" action="{{ url_for('admin.settings_password') }}">
+        <div class="row"><label for="lock_password">{{ _("New password") }}</label><input id="lock_password" name="password" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="row"><label for="lock_confirm">{{ _("Repeat password") }}</label><input id="lock_confirm" name="confirm" type="password" autocomplete="new-password" required></div>
+        <button class="action">{{ _("Change password") if s.has_lock_password else _("Set password") }}</button>
+      </form>
+      {% if lock_enabled %}
+      <form method="post" action="{{ url_for('admin.settings_lock') }}"><button class="action">{{ _("Lock now") }}</button></form>
+      {% endif %}
+    </div>
+    <p>{{ _("SETTINGS_LOCK in docker-compose.yml turns the padlock on. It closes by itself after 30 minutes without use.") }}</p>
+  </section>
+
   <footer class="about">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Daytree" width="56" height="56">
     <div class="links">
@@ -339,6 +355,7 @@
   const autosave = () => saveLater(form);
   async function save(target) {
     const response = await fetch(target.action, { method: 'POST', headers: { 'X-Autosave': '1' }, body: new FormData(target) });
+    if (response.status === 403) return location.reload();   // the padlock closed in the meantime
     if (!response.ok) return;
     const { message, weather_city: city } = await response.json();
     // Only a found place is written back: an older save must not erase what is being typed
@@ -366,7 +383,8 @@
     document.getElementById('background-minutes').hidden = event.target.value !== 'custom';
   });
   document.getElementById('new-photo').addEventListener('click', async () => {
-    await fetch('/api/background/refresh', { method: 'POST' });
+    const response = await fetch('/api/background/refresh', { method: 'POST' });
+    if (response.status === 403) return location.reload();
     notify('settings-changed');
   });
   document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', () => {

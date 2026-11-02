@@ -5,41 +5,47 @@ The table is the reference for what is public. Change it only together with the 
 import pytest
 from conftest import ORIGIN, PUBLIC
 
-from daytree import core
+from daytree import auth, core
 from daytree.web import app
 
 GOOD, BAD = "good-token", "bad-token"
 OK = 204           # every route except the ones below is replaced by a stub that answers 204
+PADLOCK = 200      # the settings page shows the padlock instead
+LOCK_HASH = auth.hash_password("correct horse")
 
-# (method, path): status internal, then public in mode off, ics and dashboard
+# (method, path): status internal, internal with the padlock closed, then public in mode off, ics and dashboard
 TABLE = {
-    ("GET", "/"):                                (OK, 404, 404, OK),
-    ("GET", "/kiosk"):                           (OK, 404, 404, OK),
-    ("GET", "/api/config"):                      (OK, 404, 404, OK),
-    ("GET", "/api/events"):                      (OK, 404, 404, OK),
-    ("GET", "/api/weather"):                     (OK, 404, 404, OK),
-    ("GET", "/api/waste"):                       (OK, 404, 404, OK),
-    ("GET", "/api/background"):                  (OK, 404, 404, OK),
-    ("GET", "/api/status"):                      (OK, 404, 404, OK),
-    ("POST", "/api/background/refresh"):         (OK, 404, 404, 404),
-    ("GET", "/api/tasks"):                       (OK, 404, 404, 404),
-    ("POST", "/api/tasks"):                      (OK, 404, 404, 404),
-    ("PATCH", "/api/tasks/1"):                   (OK, 404, 404, 404),
-    ("DELETE", "/api/tasks/1"):                  (OK, 404, 404, 404),
-    ("GET", "/settings"):                        (OK, 404, 404, 404),
-    ("POST", "/settings/login"):                 (OK, 404, 404, 404),
-    ("POST", "/settings/save"):                  (OK, 404, 404, 404),
-    ("POST", "/settings/display"):               (OK, 404, 404, 404),
-    ("POST", "/settings/waste"):                 (OK, 404, 404, 404),
-    ("POST", "/settings/tunnel"):                (OK, 404, 404, 404),
-    ("POST", "/sync"):                           (OK, 404, 404, 404),
-    ("GET", "/ping"):                            (200, 200, 200, 200),
-    ("GET", f"/calendar.ics?token={GOOD}"):      (200, 404, 200, 200),
-    ("GET", f"/calendar.ics?token={BAD}"):       (403, 404, 403, 403),
-    ("GET", "/calendar.ics"):                    (403, 404, 403, 403),
+    ("GET", "/"):                                (OK, OK, 404, 404, OK),
+    ("GET", "/kiosk"):                           (OK, OK, 404, 404, OK),
+    ("GET", "/api/config"):                      (OK, OK, 404, 404, OK),
+    ("GET", "/api/events"):                      (OK, OK, 404, 404, OK),
+    ("GET", "/api/weather"):                     (OK, OK, 404, 404, OK),
+    ("GET", "/api/waste"):                       (OK, OK, 404, 404, OK),
+    ("GET", "/api/background"):                  (OK, OK, 404, 404, OK),
+    ("GET", "/api/status"):                      (OK, OK, 404, 404, OK),
+    ("POST", "/api/background/refresh"):         (OK, 403, 404, 404, 404),
+    ("GET", "/api/tasks"):                       (OK, OK, 404, 404, 404),
+    ("POST", "/api/tasks"):                      (OK, OK, 404, 404, 404),
+    ("PATCH", "/api/tasks/1"):                   (OK, OK, 404, 404, 404),
+    ("DELETE", "/api/tasks/1"):                  (OK, OK, 404, 404, 404),
+    ("GET", "/settings"):                        (OK, PADLOCK, 404, 404, 404),
+    ("POST", "/settings/login"):                 (OK, 403, 404, 404, 404),
+    ("POST", "/settings/save"):                  (OK, 403, 404, 404, 404),
+    ("POST", "/settings/display"):               (OK, 403, 404, 404, 404),
+    ("POST", "/settings/waste"):                 (OK, 403, 404, 404, 404),
+    ("POST", "/settings/tunnel"):                (OK, 403, 404, 404, 404),
+    ("POST", "/settings/unlock"):                (OK, OK, 404, 404, 404),
+    ("POST", "/settings/lock"):                  (OK, 403, 404, 404, 404),
+    ("POST", "/settings/password"):              (OK, 403, 404, 404, 404),
+    ("POST", "/sync"):                           (OK, 403, 404, 404, 404),
+    ("GET", "/ping"):                            (200, 200, 200, 200, 200),
+    ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 404, 200, 200),
+    ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 404, 403, 403),
+    ("GET", "/calendar.ics"):                    (403, 403, 404, 403, 403),
 }
 SIDES = {
     "internal": {},
+    "internal, padlock closed": {},
     "port 8081": {"environ_overrides": PUBLIC},
     "Cloudflare header": {"headers": {"Cf-Ray": "abc"}},
     "Cloudflare client IP": {"headers": {"Cf-Connecting-Ip": "203.0.113.9"}},
@@ -53,8 +59,8 @@ def stubbed(monkeypatch):
     for endpoint in list(app.view_functions):
         if endpoint not in REAL:
             monkeypatch.setitem(app.view_functions, endpoint, lambda **_: ("", 204))
-    core.settings["token"] = GOOD
-    core.ICS_FILE.write_text("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
+    core.settings.update(token=GOOD, calendar_code="fam123", lock_hash=LOCK_HASH)
+    core.ICS_FILE.write_bytes(b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
     yield app.test_client()
     core.ICS_FILE.unlink(missing_ok=True)
 
@@ -62,14 +68,16 @@ def stubbed(monkeypatch):
 def cases():
     for (method, path), expected in TABLE.items():
         yield pytest.param(method, path, "internal", "off", expected[0], id=f"{method} {path} internal")
-        for side in list(SIDES)[1:]:
-            for mode, status in zip(core.PUBLIC_MODES, expected[1:]):
+        yield pytest.param(method, path, "internal, padlock closed", "off", expected[1], id=f"{method} {path} locked")
+        for side in list(SIDES)[2:]:
+            for mode, status in zip(core.PUBLIC_MODES, expected[2:]):
                 yield pytest.param(method, path, side, mode, status, id=f"{method} {path} {side} {mode}")
 
 
 @pytest.mark.parametrize("method, path, side, mode, expected", list(cases()))
-def test_access(stubbed, method, path, side, mode, expected):
+def test_access(stubbed, monkeypatch, method, path, side, mode, expected):
     core.settings["public_mode"] = mode
+    monkeypatch.setattr(auth, "SETTINGS_LOCK", side == "internal, padlock closed")
     extra = SIDES[side]
     headers = {**ORIGIN, **extra.get("headers", {})}
     r = stubbed.open(path, method=method, headers=headers, environ_overrides=extra.get("environ_overrides"))

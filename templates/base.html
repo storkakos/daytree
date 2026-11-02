@@ -41,7 +41,7 @@
   .row input::placeholder { color:var(--muted); opacity:.7; }
   input.mono { font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); text-overflow:ellipsis; }
   .action { width:100%; min-height:46px; padding:10px 16px; border:0; background:none; color:var(--accent); font:inherit; text-align:center; cursor:pointer; position:relative; display:block; }
-  .row + .action::before, .action + .action::before { content:""; position:absolute; top:0; left:16px; right:0; border-top:.5px solid var(--line); }
+  .row + .action::before, .action + .action::before, .card > * + form > :first-child::before { content:""; position:absolute; top:0; left:16px; right:0; border-top:.5px solid var(--line); }
   .action:disabled { opacity:.4; cursor:default; }
   .action.destructive { color:var(--err); }
   .copy { flex:none; border:0; background:none; color:var(--accent); font:inherit; cursor:pointer; min-height:32px; }
