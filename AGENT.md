@@ -114,6 +114,11 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 
 Legacy `/data/settings.json` (plaintext, from an earlier iteration) is migrated to `settings.enc` and deleted on startup.
 
+A backup from **Settings → Backup** (`daytree/backup.py`) is a JSON file with a readable header (`format`, `version`,
+`app`, scrypt parameters and salt) and `data`: settings, tasks and waste ICS, Fernet-encrypted with a key derived from
+the backup password. A restore refuses scrypt parameters outside what real backups use, checks every settings type,
+task and the waste calendar, and only then replaces anything; old settings formats go through `core.normalize()`.
+
 ### HTTP routes
 
 | Route | Internal (8080) | Public side (8081 or request with `Cf-Ray` / `Cf-Connecting-Ip`) |
