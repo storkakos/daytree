@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-02
+
+Daytree can be backed up and moved with one file.
+
+### Added
+
+- **Backup** in the settings: download the settings with all credentials, the tasks and the waste calendar as one
+  file, encrypted with a password of its own. It does not need the key file.
+- **Restore** checks the whole file before it replaces anything, and changes nothing if the password is wrong or the
+  file is damaged.
+
 ## [0.20.0] - 2026-11-02
 
 Daytree tells you when the calendar is out of date.
@@ -197,7 +208,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.20.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.21.0...dev
+[0.21.0]: https://github.com/storkakos/daytree/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/storkakos/daytree/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/storkakos/daytree/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/storkakos/daytree/compare/v0.17.0...v0.18.0

@@ -4,10 +4,10 @@ import secrets
 from datetime import date, datetime
 from zoneinfo import available_timezones
 
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from icalendar import Calendar
 
-from daytree import VERSION, auth, display, notify, sync, tunnel
+from daytree import VERSION, auth, backup, display, notify, sync, tunnel
 from daytree.auth import PUBLIC_PORT
 from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
@@ -353,3 +353,37 @@ def settings_notify():
     else:
         flash(_("Settings saved."), "ok")
     return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/backup")
+def settings_backup():
+    """Download settings, tasks and the waste calendar, encrypted with a password of its own."""
+    password = request.form.get("password", "")
+    error = _new_password_error(password, request.form.get("confirm", ""))
+    if error:
+        flash(error, "err")
+        return redirect(url_for("admin.settings_page"))
+    name = f"daytree-backup-{date.today().isoformat()}.json"
+    return Response(backup.export(password), mimetype="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+
+
+@bp.post("/settings/restore")
+def settings_restore():
+    """Replace settings, tasks and the waste calendar from a backup, after checking all of it."""
+    upload = request.files.get("backup_file")
+    if not upload or not upload.filename:
+        flash(_("Choose a backup file."), "err")
+        return redirect(url_for("admin.settings_page"))
+    try:
+        content = backup.read(upload.read(backup.MAX_BYTES + 1), request.form.get("password", ""))
+    except backup.BackupError as error:
+        flash(_(str(error)), "err")
+        return redirect(url_for("admin.settings_page"))
+    backup.restore(content)
+    auth.close_other_sessions()
+    display.weather.clear()
+    sync.reset_timer()
+    tunnel.restart.set()
+    flash(_("Backup restored."), "ok")
+    return redirect(url_for("admin.settings_page", updated=1))

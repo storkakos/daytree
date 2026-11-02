@@ -121,11 +121,10 @@ def save_settings(s):
 
 
 def load_settings():
-    s = json.loads(json.dumps(DEFAULTS))
-    dirty = False
+    stored, dirty = {}, False
     if SETTINGS_FILE.exists():
         try:
-            s.update(read_encrypted(SETTINGS_FILE))
+            stored = read_encrypted(SETTINGS_FILE)
         except InvalidToken:
             raise SystemExit(
                 "settings.enc cannot be decrypted with the available key. "
@@ -133,10 +132,23 @@ def load_settings():
             )
     elif LEGACY_FILE.exists():
         try:
-            s.update(json.loads(LEGACY_FILE.read_text()))
+            stored = json.loads(LEGACY_FILE.read_text())
             dirty = True
         except Exception:
             pass
+    s, changed = normalize(stored)
+    if dirty or changed:
+        save_settings(s)
+        LEGACY_FILE.unlink(missing_ok=True)
+    return s
+
+
+def normalize(stored):
+    """Stored settings with defaults for missing keys and old formats brought up to date. Also used for backups.
+    Returns the settings and whether they differ from what was stored."""
+    s = json.loads(json.dumps(DEFAULTS))
+    s.update(stored)
+    dirty = False
     s["interval_minutes"] = clamp(s["interval_minutes"])
     if "public_mode" in s:      # up to 0.15: one mode instead of areas
         s["public_areas"] = {"ics": ["ics"], "dashboard": ["ics", "homepage"]}.get(s.pop("public_mode"), [])
@@ -145,10 +157,7 @@ def load_settings():
     if not s["token"]:
         s["token"] = secrets.token_urlsafe(24)
         dirty = True
-    if dirty:
-        save_settings(s)
-        LEGACY_FILE.unlink(missing_ok=True)
-    return s
+    return s, dirty
 
 
 settings = load_settings()      # changed in place only, so every module shares the same dict

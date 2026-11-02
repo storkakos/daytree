@@ -295,9 +295,19 @@ the settings, then turn the padlock on again.
 
 ## Backups and upgrades
 
+The easiest backup is in the settings, under **Backup**: enter a password and select **Download backup**. The file
+holds the settings with all credentials, the tasks and the waste calendar, encrypted with that password. It does not
+need the key file, so it also moves Daytree to another server. To restore, choose the file, enter its password and
+select **Restore**. Daytree checks the whole file first and changes nothing if the password is wrong or the file is
+damaged. The calendar itself is synced again from TimeTree.
+
+Keep the password somewhere safe: without it the backup cannot be opened.
+
+You can also back up the volumes:
+
 | Volume | Mount | Content |
 |---|---|---|
-| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
+| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `waste.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
 | `daytree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.

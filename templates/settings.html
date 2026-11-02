@@ -375,6 +375,23 @@
     <p>{{ _("Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.") }}</p>
   </section>
 
+  <section class="group" id="backup">
+    <h2>{{ _("Backup") }}</h2>
+    <div class="card">
+      <form method="post" action="{{ url_for('admin.settings_backup') }}">
+        <div class="row"><label for="backup_password">{{ _("Password") }}</label><input id="backup_password" name="password" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="row"><label for="backup_confirm">{{ _("Repeat password") }}</label><input id="backup_confirm" name="confirm" type="password" autocomplete="new-password" required></div>
+        <button class="action">{{ _("Download backup") }}</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.settings_restore') }}" enctype="multipart/form-data" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('Replace all settings, tasks and the waste calendar with the backup?') }}">
+        <div class="row stack"><label for="backup_file">{{ _("Backup file") }}</label><input id="backup_file" type="file" name="backup_file" accept=".json,application/json" required></div>
+        <div class="row"><label for="restore_password">{{ _("Password") }}</label><input id="restore_password" name="password" type="password" autocomplete="off" required></div>
+        <button class="action destructive">{{ _("Restore") }}</button>
+      </form>
+    </div>
+    <p>{{ _("The backup holds the settings with all credentials, the tasks and the waste calendar, encrypted with its own password. It does not need the key file, so it can also move Daytree to another server.") }}</p>
+  </section>
+
   <footer class="about">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Daytree" width="56" height="56">
     <div class="links">

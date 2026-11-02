@@ -186,6 +186,20 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: backup
+    "Backup": "Sicherung",
+    "Download backup": "Sicherung herunterladen",
+    "Backup file": "Sicherungsdatei",
+    "Restore": "Wiederherstellen",
+    "Replace all settings, tasks and the waste calendar with the backup?":
+        "Alle Einstellungen, Aufgaben und den Müllkalender durch die Sicherung ersetzen?",
+    "The backup holds the settings with all credentials, the tasks and the waste calendar, encrypted with its own password. It does not need the key file, so it can also move Daytree to another server.":
+        "Die Sicherung enthält die Einstellungen mit allen Zugangsdaten, die Aufgaben und den Müllkalender, verschlüsselt mit einem eigenen Passwort. Sie braucht die Schlüsseldatei nicht und kann Daytree so auch auf einen anderen Server umziehen.",
+    "Choose a backup file.": "Wähle eine Sicherungsdatei.",
+    "Backup restored.": "Sicherung wiederhergestellt.",
+    "This is not a Daytree backup.": "Das ist keine Daytree-Sicherung.",
+    "Wrong password, or the file is damaged.": "Falsches Passwort, oder die Datei ist beschädigt.",
+    "The backup is incomplete.": "Die Sicherung ist unvollständig.",
     # Settings: notifications
     "Notifications": "Benachrichtigungen",
     "Address": "Adresse",
