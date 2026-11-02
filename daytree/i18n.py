@@ -185,6 +185,22 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: API tokens
+    "API tokens": "API-Tokens",
+    "New token “{name}”": "Neues Token „{name}“",
+    "Copy the token now. It is not shown again.": "Kopiere das Token jetzt. Es wird nicht noch einmal angezeigt.",
+    "Read only": "Nur lesen",
+    "Read and write": "Lesen und schreiben",
+    "Created {date}": "Erstellt {date}",
+    "Last used {date}": "Zuletzt genutzt {date}",
+    "Never used": "Nie genutzt",
+    "Revoke this token? Apps using it lose access.": "Dieses Token widerrufen? Apps, die es nutzen, verlieren den Zugriff.",
+    "Revoke": "Widerrufen",
+    "Name": "Name",
+    "Access": "Zugriff",
+    "Create token": "Token erstellen",
+    "Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.":
+        "Apps senden das Token im Header Authorization: Bearer <token>. Im Heimnetz braucht Lesen kein Token, Schreiben außerhalb der Startseite schon.",
     # Messages
     "Enter e-mail and password.": "Gib E-Mail und Passwort ein.",
     "Login failed: {error}": "Anmeldung fehlgeschlagen: {error}",
@@ -200,6 +216,9 @@ GERMAN = {
     "Password saved.": "Passwort gesichert.",
     "The password needs at least {count} characters.": "Das Passwort braucht mindestens {count} Zeichen.",
     "The passwords do not match.": "Die Passwörter stimmen nicht überein.",
+    "Enter a name for the token.": "Gib einen Namen für das Token ein.",
+    "Too many tokens. Revoke one first.": "Zu viele Tokens. Widerrufe zuerst eines.",
+    "Token revoked.": "Token widerrufen.",
     "Please configure credentials and calendar under Settings": "Bitte Zugangsdaten und Kalender in den Einstellungen eintragen",
     "Timed out after 10 minutes": "Abbruch nach 10 Minuten",
     "unknown error": "Unbekannter Fehler",
