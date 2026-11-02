@@ -15,6 +15,8 @@ from daytree.core import needs_setup, save_settings, settings
 PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8081"))   # port the Cloudflare tunnel points to
 # What the homepage area opens: its pages, the reads it makes and its static files. No tasks, settings or status.
 HOMEPAGE_PATHS = ("/", "/kiosk", "/api/config", "/api/events", "/api/weather", "/api/waste", "/api/background")
+# Need an API token even from the home network: a forged Origin header must not get around the padlock
+TOKEN_ONLY_PATHS = ("/api/sync",)
 SETTINGS_LOCK = os.environ.get("SETTINGS_LOCK", "false").strip().lower() in ("1", "true", "yes", "on")
 LOCKED_PATHS = ("/settings", "/sync", "/api/background/refresh")
 SETUP_PATHS = ("/settings/login", "/settings/save")         # the first-time setup on the homepage
@@ -44,7 +46,9 @@ def guard():
     if public:
         _public_rules(token)
     if token is False:
-        abort(Response("Invalid API token\n", 401, {"WWW-Authenticate": "Bearer"}))
+        _unauthorized("Invalid API token")
+    if token is None and request.path in TOKEN_ONLY_PATHS:
+        _unauthorized("API token required")
     if request.method not in ("GET", "HEAD"):
         if token and not token["write"]:
             abort(403)                           # a read-only token
@@ -63,9 +67,13 @@ def _public_rules(token):
         return
     if "api" in areas and path.startswith("/api/"):
         if token is None:
-            abort(Response("API token required\n", 401, {"WWW-Authenticate": "Bearer"}))
+            _unauthorized("API token required")
         return                                   # validity and write access are checked by the guard
     abort(404)
+
+
+def _unauthorized(message):
+    abort(Response(message + "\n", 401, {"WWW-Authenticate": "Bearer"}))
 
 
 def _same_site():

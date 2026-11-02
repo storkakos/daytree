@@ -47,6 +47,7 @@ TABLE = {
     ("POST", "/settings/tokens"):                (OK, 403, 404, 404, 404, 404),
     ("POST", "/settings/tokens/revoke"):         (OK, 403, 404, 404, 404, 404),
     ("POST", "/sync"):                           (OK, 403, 404, 404, 404, 404),
+    ("POST", "/api/sync"):                       (UNAUTHORIZED, UNAUTHORIZED, 404, 404, 404, UNAUTHORIZED),
     ("GET", "/ping"):                            (200, 200, 200, 200, 200, 200),
     ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 404, 200, 404, 404),
     ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 404, 403, 404, 404),
@@ -128,6 +129,7 @@ TOKENS = {
     ("POST", "/settings/tokens"):                (403, 403, 403, 403),
     ("POST", "/settings/tokens/revoke"):         (403, 403, 403, 403),
     ("POST", "/sync"):                           (403, 403, 403, 403),
+    ("POST", "/api/sync"):                       (UNAUTHORIZED, 403, OK, UNAUTHORIZED),
     ("GET", "/ping"):                            (200, 200, 200, 200),
     ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 200, 200),
     ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 403, 403),
@@ -168,6 +170,7 @@ PUBLIC_TOKENS = {
     ("GET", "/settings"):                        (404, 404, 404, 404),
     ("POST", "/settings/tokens"):                (404, 404, 404, 404),
     ("POST", "/sync"):                           (404, 404, 404, 404),
+    ("POST", "/api/sync"):                       (404, 403, OK, UNAUTHORIZED),
     ("GET", "/ping"):                            (200, 200, 200, 200),
 }
 PUBLIC_TOKEN_CASES = ((["ics", "homepage"], WRITE), (["api"], READ), (["api"], WRITE), (["api"], WRONG))
@@ -217,7 +220,7 @@ def test_internal_side_ignores_the_areas(stubbed, areas):
     ({"Origin": "http://localhost"}, OK),
     ({"Referer": "http://localhost/settings"}, OK),
 ])
-@pytest.mark.parametrize("method, path", [(m, p) for m, p in TABLE if m != "GET"])
+@pytest.mark.parametrize("method, path", [(m, p) for m, p in TABLE if m != "GET" and p not in auth.TOKEN_ONLY_PATHS])
 def test_csrf(stubbed, method, path, headers, expected):
     assert stubbed.open(path, method=method, headers=headers).status_code == expected
 

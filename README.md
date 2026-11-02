@@ -191,6 +191,7 @@ curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      
 | `/api/calendars/<id>/events` | `GET` | Events from `?from=` up to `?to=` (ISO dates, at most 366 days). Default: today and the next 7 days |
 | `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …, "done": false}` |
 | `/api/tasks/<id>` | `GET`, `PUT`, `PATCH`, `DELETE` | Read one task, replace it, change `title` or `done`, delete it |
+| `/api/sync` | `POST` | Start a sync now. Answers `202`, or `409` while one is running. Always needs a read-write token |
 | `/api/status` | `GET` | Last sync and tunnel status |
 
 Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Through the

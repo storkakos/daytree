@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-02
+
+Automations can start a sync.
+
+### Added
+
+- `POST /api/sync` starts a sync without waiting for it. It always needs a read-write API token, also on the home
+  network, and answers `409` while a sync is running.
+
 ## [0.17.0] - 2026-11-02
 
 The API covers calendars and every task operation.
@@ -168,7 +177,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.17.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.18.0...dev
+[0.18.0]: https://github.com/storkakos/daytree/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/storkakos/daytree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/storkakos/daytree/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
