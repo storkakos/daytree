@@ -68,7 +68,8 @@ Everything is behind the gear icon, saved immediately and shown live:
   the API, or any mix.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
-- **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
+- **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma, a note on the homepage when its events are out
+  of date, and a message to ntfy or a webhook when syncing stops working.
 - **API:** a JSON API for calendars, events and tasks, with tokens you create and revoke in the settings.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
@@ -150,8 +151,22 @@ If `cloudflared` already runs elsewhere, leave the built-in tunnel disabled and 
 
 ### Uptime monitoring
 
-Point your monitor at `https://<hostname>/ping`. The endpoint is available in every mode, needs no token and only
+Point your monitor at `https://<hostname>/ping`. The endpoint is always available, needs no token and only
 returns `pong`. It shows that the app and the tunnel are up, not whether the last sync succeeded.
+
+### When a sync fails
+
+Daytree uses an unofficial TimeTree API, so a sync can stop working. The homepage then keeps the last events and shows
+a yellow note such as *Last updated 3 days ago*, after a failed sync or once the last success is older than two sync
+intervals. If the homepage cannot reach Daytree at all, it says so.
+
+To get a message, enter an address under **Notifications** in the settings:
+
+- an [ntfy](https://ntfy.sh/) topic such as `https://ntfy.sh/<your-secret-topic>`, with the format *ntfy*, or
+- a webhook that takes JSON with `title` and `message`, with the format *JSON*.
+
+Daytree sends one message when syncing stops working and one when it works again. The message does not contain the
+error, because it can include account details; the settings show it. **Send test message** checks the address.
 
 ## How it works
 

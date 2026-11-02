@@ -7,7 +7,7 @@ from zoneinfo import available_timezones
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from icalendar import Calendar
 
-from daytree import VERSION, auth, display, sync, tunnel
+from daytree import VERSION, auth, display, notify, sync, tunnel
 from daytree.auth import PUBLIC_PORT
 from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
@@ -328,4 +328,28 @@ def settings_token_revoke():
     settings["api_tokens"] = remaining
     save_settings(settings)
     flash(_("Token revoked."), "ok")
+    return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/notify")
+def settings_notify():
+    """Where sync failures are reported. The URL is stored encrypted and never shown again."""
+    url = request.form.get("notify_url", "").strip()
+    if url:
+        if not re.fullmatch(r"https?://[^\s]+", url) or len(url) > 500:
+            flash(_("The address must start with http:// or https://."), "err")
+            return redirect(url_for("admin.settings_page"))
+        settings["notify_url"] = url
+    if request.form.get("clear_notify"):
+        settings["notify_url"] = ""
+    fmt = request.form.get("notify_format", settings["notify_format"])
+    settings["notify_format"] = fmt if fmt in notify.FORMATS else "ntfy"
+    save_settings(settings)
+    if request.form.get("test") and settings["notify_url"]:
+        if notify.test():
+            flash(_("Test message sent."), "ok")
+        else:
+            flash(_("The test message could not be sent."), "err")
+    else:
+        flash(_("Settings saved."), "ok")
     return redirect(url_for("admin.settings_page"))

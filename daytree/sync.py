@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 import recurring_ical_events
 from icalendar import Calendar
 
+from daytree import notify
 from daytree.core import COLORS_FILE, DATA, ICS_FILE, STATE_FILE, settings
 
 lock = threading.Lock()          # one sync at a time
@@ -136,6 +137,7 @@ def run_sync():
         except Exception as e:  # noqa: BLE001
             state.update(ok=False, message=str(e)[:300])
     finally:
+        notify.after_sync(state)
         _save_state()
         lock.release()
 

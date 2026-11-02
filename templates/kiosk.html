@@ -28,7 +28,8 @@
   #analog[hidden], #clock[hidden] { display:none; }
   #date { font-size:1.15rem; margin-top:.15rem; }
   #greeting { font-size:1.6rem; font-weight:var(--weight); margin-top:.4rem; }
-  #greeting:empty, #weather:empty { display:none; }
+  #greeting:empty, #weather:empty, #stale:empty { display:none; }
+  #stale { margin-top:.5rem; padding:.2rem .7rem; border-radius:1rem; font-size:.9rem; color:#ffd60a; background:rgba(0,0,0,.35); }
   #weather { color:var(--muted); }
   #corner { flex:1 1 0; display:flex; justify-content:flex-end; min-width:0; margin-left:1rem; padding-right:60px; }
   .glass { background:var(--glass); border:.5px solid var(--glass-line); -webkit-backdrop-filter:blur(26px) saturate(150%); backdrop-filter:blur(26px) saturate(150%); }
@@ -164,6 +165,7 @@
       <div id="date"></div>
       <div id="greeting"></div>
       <div id="weather"></div>
+      <div id="stale" role="status"></div>
     </div>
     <div id="corner">
       <button id="reminder" class="glass" hidden></button>
@@ -368,9 +370,15 @@
     return response && response.ok ? response.json() : null;
   };
 
+  let missed = 0;
   async function loadEvents() {
     const data = await getJson('/api/events');
-    if (!data) return;      // the last events stay visible while the server is unreachable
+    if (!data) {            // the last events stay visible while the server is unreachable, with a note after a while
+      if (++missed >= 3) $('stale').textContent = CONFIG.text['No connection to Daytree'];
+      return;
+    }
+    missed = 0;
+    $('stale').textContent = data.stale || '';
     events = data.events;
     render();
   }

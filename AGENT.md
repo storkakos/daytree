@@ -290,8 +290,9 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Put new code into the module of its area in `daytree/`. `web.py` only joins the areas, and `core.py` stays free of
   Flask.
 - Keep dependencies minimal; every new package must be justified (image size).
-- Background and weather lookups are the only outgoing calls besides TimeTree. They must fail quietly and never
-  use Bonjourr's own backend.
+- Background and weather lookups and the notification address the owner sets are the only outgoing calls besides
+  TimeTree. They must fail quietly with a short timeout and never use Bonjourr's own backend. Notifications never
+  contain the sync error.
 - The project is GPL-3.0 since the release after 0.9.0. Code from Bonjourr (GPL-3.0) may be reused with credit.
 - The oldest supported browser is Chromium 56. Do not use object spread, CSS grid, `clamp()`, `min()`, `max()`,
   `inset`, flex `gap` or alpha hex colors on the homepage.

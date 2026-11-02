@@ -186,6 +186,31 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: notifications
+    "Notifications": "Benachrichtigungen",
+    "Address": "Adresse",
+    "Address is stored": "Adresse ist gespeichert",
+    "Format": "Format",
+    "Delete the stored address": "Gespeicherte Adresse löschen",
+    "Send test message": "Testnachricht senden",
+    "Daytree sends one message when syncing stops working and one when it works again. Use an ntfy topic, or a webhook that takes JSON with title and message.":
+        "Daytree schickt eine Nachricht, wenn der Sync nicht mehr klappt, und eine, wenn er wieder läuft. Nutze ein ntfy-Topic oder einen Webhook, der JSON mit title und message annimmt.",
+    "The address must start with http:// or https://.": "Die Adresse muss mit http:// oder https:// beginnen.",
+    "Test message sent.": "Testnachricht gesendet.",
+    "The test message could not be sent.": "Die Testnachricht konnte nicht gesendet werden.",
+    "Daytree: sync failed": "Daytree: Sync fehlgeschlagen",
+    "TimeTree could not be synced. The homepage keeps showing the last events.":
+        "TimeTree konnte nicht synchronisiert werden. Die Startseite zeigt weiter die letzten Termine.",
+    "Daytree: sync works again": "Daytree: Sync läuft wieder",
+    "TimeTree is synced again.": "TimeTree wird wieder synchronisiert.",
+    "Daytree: test message": "Daytree: Testnachricht",
+    "Notifications from Daytree arrive here.": "Benachrichtigungen von Daytree kommen hier an.",
+    # Homepage: freshness
+    "No connection to Daytree": "Keine Verbindung zu Daytree",
+    "Calendar not updated yet": "Kalender noch nicht aktualisiert",
+    "Last updated {count} min ago": "Zuletzt aktualisiert vor {count} Min.",
+    "Last updated {count} h ago": "Zuletzt aktualisiert vor {count} Std.",
+    "Last updated {count} days ago": "Zuletzt aktualisiert vor {count} Tagen",
     # Settings: API tokens
     "API tokens": "API-Tokens",
     "New token “{name}”": "Neues Token „{name}“",
