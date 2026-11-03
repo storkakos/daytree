@@ -7,6 +7,114 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-02
+
+### Fixed
+
+- Browsers with their own dark mode no longer override the appearance setting. The pages now tell the browser
+  which color schemes they have: both for Automatic, only the chosen one for Light or Dark.
+
+## [0.24.0] - 2026-11-02
+
+The settings can stay light or dark, whatever the device does.
+
+### Added
+
+- **Appearance** in the settings: automatic, light or dark. It applies to the settings, the padlock page and the
+  setup window, and changes at once. The homepage keeps its dark glass look.
+
+### Changed
+
+- The setup window and the settings panel on the homepage are dark when the device or the setting is.
+
+## [0.23.0] - 2026-11-02
+
+Daytree can be installed without building it.
+
+### Added
+
+- A prebuilt image for amd64 and arm64 at `ghcr.io/storkakos/daytree`, published with every release as `x.y.z`, `x.y`
+  and `latest`. `docker compose pull` gets it; `docker compose up -d --build` still builds from source.
+- `DAYTREE_VERSION` in `.env` pins the prebuilt image to a version.
+
+## [0.22.0] - 2026-11-02
+
+The homepage can be installed as an app.
+
+### Added
+
+- A web app manifest for `/`: browsers offer to install the homepage, which then opens without the address bar.
+  It needs HTTPS. `/kiosk` stays a plain page, and there is no offline mode.
+
+## [0.21.0] - 2026-11-02
+
+Daytree can be backed up and moved with one file.
+
+### Added
+
+- **Backup** in the settings: download the settings with all credentials, the tasks and the waste calendar as one
+  file, encrypted with a password of its own. It does not need the key file.
+- **Restore** checks the whole file before it replaces anything, and changes nothing if the password is wrong or the
+  file is damaged.
+
+## [0.20.0] - 2026-11-02
+
+Daytree tells you when the calendar is out of date.
+
+### Added
+
+- The homepage shows a note such as *Last updated 3 days ago* after a failed sync, or once the last success is
+  older than two sync intervals, and *No connection to Daytree* when it cannot reach the app.
+- Notifications in the settings: an ntfy topic or a JSON webhook gets one message when syncing stops working and one
+  when it works again. The address is stored encrypted, and a test message checks it.
+
+## [0.19.0] - 2026-11-02
+
+Daytree can send browsers to your HTTPS reverse proxy.
+
+### Added
+
+- `HTTPS_URL` in `.env`: the homepage and the settings move to that address, and writes and API tokens over plain
+  HTTP are refused. `/kiosk`, `/ping` and the healthcheck stay on HTTP. The padlock cookie is `Secure` behind HTTPS.
+
+## [0.18.0] - 2026-11-02
+
+Automations can start a sync.
+
+### Added
+
+- `POST /api/sync` starts a sync without waiting for it. It always needs a read-write API token, also on the home
+  network, and answers `409` while a sync is running.
+
+## [0.17.0] - 2026-11-02
+
+The API covers calendars and every task operation.
+
+### Added
+
+- `GET /api/calendars` lists the synced calendar, and `GET /api/calendars/<id>/events` returns its events for a date
+  range of up to 366 days.
+- `GET` and `PUT` for a single task under `/api/tasks/<id>`. `PATCH` can change the title too, and `POST` can create
+  a task that is already done.
+
+### Changed
+
+- The task API answers 400 for a body that is not a JSON object or has a `done` that is not true or false.
+
+## [0.16.0] - 2026-11-02
+
+You choose exactly what the tunnel shares.
+
+### Changed
+
+- The tunnel settings offer checkboxes instead of three modes: ICS feed, homepage (read-only) and API, in any
+  combination. Your previous choice is taken over.
+- A shared homepage no longer makes `/api/status` public, since the homepage does not use it.
+
+### Added
+
+- The API can be shared through the tunnel. It then needs an API token for every request.
+
 ## [0.15.1] - 2026-11-02
 
 The chosen option of a switch with several choices is easy to see again.
@@ -139,7 +247,17 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.15.1...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.1...dev
+[0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
+[0.24.0]: https://github.com/storkakos/daytree/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/storkakos/daytree/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/storkakos/daytree/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/storkakos/daytree/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/storkakos/daytree/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/storkakos/daytree/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/storkakos/daytree/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/storkakos/daytree/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/storkakos/daytree/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/storkakos/daytree/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/storkakos/daytree/compare/v0.13.0...v0.14.0

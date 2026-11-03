@@ -4,12 +4,12 @@ import secrets
 from datetime import date, datetime
 from zoneinfo import available_timezones
 
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from icalendar import Calendar
 
-from daytree import VERSION, auth, display, sync, tunnel
+from daytree import VERSION, auth, backup, display, notify, sync, tunnel
 from daytree.auth import PUBLIC_PORT
-from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_MODES, STEP_MINUTES, WASTE_FILE,
+from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
 from daytree.i18n import _, hours
 
@@ -129,6 +129,7 @@ def settings_display():
     new = {
         "timezone": zone, "background_color": color,
         "language": _choice("language", ("auto", *LANGUAGES)),
+        "appearance": _choice("appearance", ("auto", "light", "dark")),
         "time_format": _choice("time_format", ("24", "12")),
         "date_style": _choice("date_style", ("long", "numeric")),
         "clock_style": _choice("clock_style", ("digital", "analog")),
@@ -215,7 +216,7 @@ def settings_waste():
 
 @bp.post("/settings/tunnel")
 def settings_tunnel():
-    """Cloudflare tunnel and exposure mode."""
+    """Cloudflare tunnel and the areas it may reach."""
     raw = request.form.get("tunnel_token", "").strip()
     if raw:
         m = tunnel.TOKEN_RE.search(raw)   # also accepts a pasted "cloudflared ... --token XYZ" command
@@ -232,8 +233,8 @@ def settings_tunnel():
         return redirect(url_for("admin.settings_page"))
     settings["public_hostname"] = host
 
-    mode = request.form.get("public_mode", "off")
-    settings["public_mode"] = mode if mode in PUBLIC_MODES else "off"
+    chosen = request.form.getlist("public_areas")
+    settings["public_areas"] = [area for area in PUBLIC_AREAS if area in chosen]
 
     want = bool(request.form.get("tunnel_enabled"))
     if want and not settings["tunnel_token"]:
@@ -329,3 +330,61 @@ def settings_token_revoke():
     save_settings(settings)
     flash(_("Token revoked."), "ok")
     return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/notify")
+def settings_notify():
+    """Where sync failures are reported. The URL is stored encrypted and never shown again."""
+    url = request.form.get("notify_url", "").strip()
+    if url:
+        if not re.fullmatch(r"https?://[^\s]+", url) or len(url) > 500:
+            flash(_("The address must start with http:// or https://."), "err")
+            return redirect(url_for("admin.settings_page"))
+        settings["notify_url"] = url
+    if request.form.get("clear_notify"):
+        settings["notify_url"] = ""
+    fmt = request.form.get("notify_format", settings["notify_format"])
+    settings["notify_format"] = fmt if fmt in notify.FORMATS else "ntfy"
+    save_settings(settings)
+    if request.form.get("test") and settings["notify_url"]:
+        if notify.test():
+            flash(_("Test message sent."), "ok")
+        else:
+            flash(_("The test message could not be sent."), "err")
+    else:
+        flash(_("Settings saved."), "ok")
+    return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/backup")
+def settings_backup():
+    """Download settings, tasks and the waste calendar, encrypted with a password of its own."""
+    password = request.form.get("password", "")
+    error = _new_password_error(password, request.form.get("confirm", ""))
+    if error:
+        flash(error, "err")
+        return redirect(url_for("admin.settings_page"))
+    name = f"daytree-backup-{date.today().isoformat()}.json"
+    return Response(backup.export(password), mimetype="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+
+
+@bp.post("/settings/restore")
+def settings_restore():
+    """Replace settings, tasks and the waste calendar from a backup, after checking all of it."""
+    upload = request.files.get("backup_file")
+    if not upload or not upload.filename:
+        flash(_("Choose a backup file."), "err")
+        return redirect(url_for("admin.settings_page"))
+    try:
+        content = backup.read(upload.read(backup.MAX_BYTES + 1), request.form.get("password", ""))
+    except backup.BackupError as error:
+        flash(_(str(error)), "err")
+        return redirect(url_for("admin.settings_page"))
+    backup.restore(content)
+    auth.close_other_sessions()
+    display.weather.clear()
+    sync.reset_timer()
+    tunnel.restart.set()
+    flash(_("Backup restored."), "ok")
+    return redirect(url_for("admin.settings_page", updated=1))

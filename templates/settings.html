@@ -72,6 +72,14 @@
           </select>
         </div>
         <div class="row">
+          <span class="label">{{ _("Appearance") }}</span>
+          <div class="segmented">
+            <label><input type="radio" name="appearance" value="auto" {{ 'checked' if s.appearance == 'auto' }}><span>{{ _("Automatic") }}</span></label>
+            <label><input type="radio" name="appearance" value="light" {{ 'checked' if s.appearance == 'light' }}><span>{{ _("Light") }}</span></label>
+            <label><input type="radio" name="appearance" value="dark" {{ 'checked' if s.appearance == 'dark' }}><span>{{ _("Dark") }}</span></label>
+          </div>
+        </div>
+        <div class="row">
           <label for="tasks_enabled">{{ _("Show tasks on the homepage") }}</label>
           <span class="switch"><input id="tasks_enabled" type="checkbox" name="tasks_enabled" value="1" {{ 'checked' if s.tasks_enabled }}><span></span></span>
         </div>
@@ -242,6 +250,29 @@
     <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin next to the day.") }}</p>
   </form>
 
+  <form method="post" action="{{ url_for('admin.settings_notify') }}" class="group">
+    <h2>{{ _("Notifications") }}</h2>
+    <div class="card">
+      <div class="row"><label for="notify_url">{{ _("Address") }}</label><input id="notify_url" name="notify_url" type="password" autocomplete="off" placeholder="{{ _('Address is stored') if s.has_notify_url else 'https://ntfy.sh/…' }}"></div>
+      <div class="row">
+        <span class="label">{{ _("Format") }}</span>
+        <div class="segmented">
+          <label><input type="radio" name="notify_format" value="ntfy" {{ 'checked' if s.notify_format == 'ntfy' }}><span>ntfy</span></label>
+          <label><input type="radio" name="notify_format" value="json" {{ 'checked' if s.notify_format == 'json' }}><span>JSON</span></label>
+        </div>
+      </div>
+      {% if s.has_notify_url %}
+      <div class="row">
+        <label for="clear_notify">{{ _("Delete the stored address") }}</label>
+        <span class="switch"><input id="clear_notify" type="checkbox" name="clear_notify" value="1"><span></span></span>
+      </div>
+      {% endif %}
+      <button class="action">{{ _("Save") }}</button>
+      {% if s.has_notify_url %}<button class="action" name="test" value="1">{{ _("Send test message") }}</button>{% endif %}
+    </div>
+    <p>{{ _("Daytree sends one message when syncing stops working and one when it works again. Use an ntfy topic, or a webhook that takes JSON with title and message.") }}</p>
+  </form>
+
   <section class="group">
     <h2>{{ _("Calendar subscription") }}</h2>
     <div class="card">
@@ -288,15 +319,16 @@
   <section class="group">
     <h2>{{ _("Reachable through the tunnel") }}</h2>
     <div class="card">
-      {% for mode, title, text in [('off', _("Nothing"), _("Only the /ping health check.")), ('ics', _("ICS file only"), _("The ICS feed and /ping. Everything else returns 404.")), ('dashboard', _("Homepage (read-only) + ICS"), _("The homepage without tasks and settings, the ICS feed and /ping."))] %}
+      {% for area, title, text in [('ics', _("ICS feed"), _("Calendar apps fetch the feed with its token.")), ('homepage', _("Homepage (read-only)"), _("The homepage and /kiosk, without tasks and settings.")), ('api', _("API"), _("Apps with an API token. Read-only tokens can only read."))] %}
       <label class="row option">
-        <input form="tunnel-form" type="radio" name="public_mode" value="{{ mode }}" {{ 'checked' if s.public_mode == mode }}>
+        <input form="tunnel-form" type="checkbox" name="public_areas" value="{{ area }}" {{ 'checked' if area in s.public_areas }}>
         <div><strong>{{ title }}</strong><small>{{ text }}</small></div>
         <span class="tick">✓</span>
       </label>
       {% endfor %}
       <button class="action" form="tunnel-form">{{ _("Save") }}</button>
     </div>
+    <p>{{ _("Tick what the tunnel may reach. With nothing ticked, only the /ping health check is reachable. Settings are never reachable.") }}</p>
     <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
   </section>
 
@@ -349,6 +381,23 @@
       </form>
     </div>
     <p>{{ _("Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.") }}</p>
+  </section>
+
+  <section class="group" id="backup">
+    <h2>{{ _("Backup") }}</h2>
+    <div class="card">
+      <form method="post" action="{{ url_for('admin.settings_backup') }}">
+        <div class="row"><label for="backup_password">{{ _("Password") }}</label><input id="backup_password" name="password" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="row"><label for="backup_confirm">{{ _("Repeat password") }}</label><input id="backup_confirm" name="confirm" type="password" autocomplete="new-password" required></div>
+        <button class="action">{{ _("Download backup") }}</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.settings_restore') }}" enctype="multipart/form-data" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('Replace all settings, tasks and the waste calendar with the backup?') }}">
+        <div class="row stack"><label for="backup_file">{{ _("Backup file") }}</label><input id="backup_file" type="file" name="backup_file" accept=".json,application/json" required></div>
+        <div class="row"><label for="restore_password">{{ _("Password") }}</label><input id="restore_password" name="password" type="password" autocomplete="off" required></div>
+        <button class="action destructive">{{ _("Restore") }}</button>
+      </form>
+    </div>
+    <p>{{ _("The backup holds the settings with all credentials, the tasks and the waste calendar, encrypted with its own password. It does not need the key file, so it can also move Daytree to another server.") }}</p>
   </section>
 
   <footer class="about">
@@ -411,6 +460,12 @@
     else saveLater(wasteForm);
   });
   form.addEventListener('change', autosave);
+  // The look changes at once, before the save comes back
+  form.querySelectorAll('input[name=appearance]').forEach(input => input.addEventListener('change', () => {
+    document.documentElement.className = input.value === 'auto' ? '' : input.value;
+    document.querySelector('meta[name=color-scheme]').content = input.value === 'auto' ? 'light dark' : 'only ' + input.value;
+    if (top !== self) document.documentElement.classList.add('embedded');
+  }));
   form.addEventListener('input', event => {
     if (event.target.type !== 'range') return;
     clearTimeout(timer);

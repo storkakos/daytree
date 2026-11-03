@@ -7,14 +7,19 @@ import threading
 from pathlib import Path
 
 from flask import Flask, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from daytree import admin, api, auth, display, sync, tunnel
+from daytree.core import settings
 from daytree.i18n import _, language
 
 ROOT = Path(__file__).resolve().parent.parent      # templates/ and static/ live next to the package
 
 app = Flask(__name__, root_path=str(ROOT))
 app.secret_key = secrets.token_hex(16)
+# A reverse proxy (HTTPS_URL) or the Cloudflare tunnel says in X-Forwarded-Proto whether the browser used HTTPS
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=1, x_host=0, x_port=0, x_prefix=0)
+app.config["SESSION_COOKIE_SECURE"] = bool(auth.HTTPS_URL)
 for blueprint in (display.bp, api.bp, admin.bp):
     app.register_blueprint(blueprint)
 app.before_request(auth.guard)
@@ -22,7 +27,11 @@ app.before_request(auth.guard)
 
 @app.context_processor
 def _inject():
-    return {"public": auth.is_public(), "_": _, "lang": language()}
+    # "light" or "dark" fixes the look; an empty class follows the device
+    theme = settings["appearance"] if settings["appearance"] in ("light", "dark") else ""
+    # Tells browsers with their own dark mode which schemes the page has, so they do not recolor it
+    scheme = f"only {theme}" if theme else "light dark"
+    return {"public": auth.is_public(), "_": _, "lang": language(), "theme": theme, "color_scheme": scheme}
 
 
 @app.after_request

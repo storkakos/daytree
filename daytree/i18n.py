@@ -149,13 +149,14 @@ GERMAN = {
     "Token is stored": "Token ist gespeichert",
     "Delete the stored token": "Gespeichertes Token löschen",
     "Reachable through the tunnel": "Über den Tunnel erreichbar",
-    "Nothing": "Nichts",
-    "Only the /ping health check.": "Nur der Health-Check /ping.",
-    "ICS file only": "Nur ICS-Datei",
-    "The ICS feed and /ping. Everything else returns 404.": "ICS-Feed und /ping. Alles andere liefert 404.",
-    "Homepage (read-only) + ICS": "Startseite (nur lesen) + ICS",
-    "The homepage without tasks and settings, the ICS feed and /ping.":
-        "Die Startseite ohne Aufgaben und Einstellungen, der ICS-Feed und /ping.",
+    "ICS feed": "ICS-Feed",
+    "Calendar apps fetch the feed with its token.": "Kalender-Apps holen den Feed mit seinem Token.",
+    "Homepage (read-only)": "Startseite (nur lesen)",
+    "The homepage and /kiosk, without tasks and settings.": "Die Startseite und /kiosk, ohne Aufgaben und Einstellungen.",
+    "API": "API",
+    "Apps with an API token. Read-only tokens can only read.": "Apps mit einem API-Token. Tokens mit Lesezugriff können nur lesen.",
+    "Tick what the tunnel may reach. With nothing ticked, only the /ping health check is reachable. Settings are never reachable.":
+        "Hake an, was der Tunnel erreichen darf. Ist nichts angehakt, ist nur der Health-Check /ping erreichbar. Die Einstellungen sind nie erreichbar.",
     "Public hostname": "Öffentlicher Hostname",
     "The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.":
         "Die Startseite hat keinen eigenen Login. Schütze den Hostnamen mit einer Cloudflare-Access-Richtlinie, wenn du sie freigibst.",
@@ -185,6 +186,50 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: appearance
+    "Appearance": "Darstellung",
+    "Automatic": "Automatisch",
+    "Light": "Hell",
+    "Dark": "Dunkel",
+    # Settings: backup
+    "Backup": "Sicherung",
+    "Download backup": "Sicherung herunterladen",
+    "Backup file": "Sicherungsdatei",
+    "Restore": "Wiederherstellen",
+    "Replace all settings, tasks and the waste calendar with the backup?":
+        "Alle Einstellungen, Aufgaben und den Müllkalender durch die Sicherung ersetzen?",
+    "The backup holds the settings with all credentials, the tasks and the waste calendar, encrypted with its own password. It does not need the key file, so it can also move Daytree to another server.":
+        "Die Sicherung enthält die Einstellungen mit allen Zugangsdaten, die Aufgaben und den Müllkalender, verschlüsselt mit einem eigenen Passwort. Sie braucht die Schlüsseldatei nicht und kann Daytree so auch auf einen anderen Server umziehen.",
+    "Choose a backup file.": "Wähle eine Sicherungsdatei.",
+    "Backup restored.": "Sicherung wiederhergestellt.",
+    "This is not a Daytree backup.": "Das ist keine Daytree-Sicherung.",
+    "Wrong password, or the file is damaged.": "Falsches Passwort, oder die Datei ist beschädigt.",
+    "The backup is incomplete.": "Die Sicherung ist unvollständig.",
+    # Settings: notifications
+    "Notifications": "Benachrichtigungen",
+    "Address": "Adresse",
+    "Address is stored": "Adresse ist gespeichert",
+    "Format": "Format",
+    "Delete the stored address": "Gespeicherte Adresse löschen",
+    "Send test message": "Testnachricht senden",
+    "Daytree sends one message when syncing stops working and one when it works again. Use an ntfy topic, or a webhook that takes JSON with title and message.":
+        "Daytree schickt eine Nachricht, wenn der Sync nicht mehr klappt, und eine, wenn er wieder läuft. Nutze ein ntfy-Topic oder einen Webhook, der JSON mit title und message annimmt.",
+    "The address must start with http:// or https://.": "Die Adresse muss mit http:// oder https:// beginnen.",
+    "Test message sent.": "Testnachricht gesendet.",
+    "The test message could not be sent.": "Die Testnachricht konnte nicht gesendet werden.",
+    "Daytree: sync failed": "Daytree: Sync fehlgeschlagen",
+    "TimeTree could not be synced. The homepage keeps showing the last events.":
+        "TimeTree konnte nicht synchronisiert werden. Die Startseite zeigt weiter die letzten Termine.",
+    "Daytree: sync works again": "Daytree: Sync läuft wieder",
+    "TimeTree is synced again.": "TimeTree wird wieder synchronisiert.",
+    "Daytree: test message": "Daytree: Testnachricht",
+    "Notifications from Daytree arrive here.": "Benachrichtigungen von Daytree kommen hier an.",
+    # Homepage: freshness
+    "No connection to Daytree": "Keine Verbindung zu Daytree",
+    "Calendar not updated yet": "Kalender noch nicht aktualisiert",
+    "Last updated {count} min ago": "Zuletzt aktualisiert vor {count} Min.",
+    "Last updated {count} h ago": "Zuletzt aktualisiert vor {count} Std.",
+    "Last updated {count} days ago": "Zuletzt aktualisiert vor {count} Tagen",
     # Settings: API tokens
     "API tokens": "API-Tokens",
     "New token “{name}”": "Neues Token „{name}“",

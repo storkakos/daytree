@@ -26,15 +26,15 @@ def supervisor():
 
 
 def test_token_checks(client):
-    r = client.post("/settings/tunnel", data={"tunnel_token": "not a token", "public_mode": "ics"}, headers=ORIGIN, follow_redirects=True)
+    r = client.post("/settings/tunnel", data={"tunnel_token": "not a token", "public_areas": "ics"}, headers=ORIGIN, follow_redirects=True)
     assert b"not recognized" in r.data and core.settings["tunnel_token"] == ""
-    r = client.post("/settings/tunnel", data={"tunnel_enabled": "1", "public_mode": "ics"}, headers=ORIGIN, follow_redirects=True)
+    r = client.post("/settings/tunnel", data={"tunnel_enabled": "1", "public_areas": "ics"}, headers=ORIGIN, follow_redirects=True)
     assert b"token first" in r.data and core.settings["tunnel_enabled"] is False
 
 
 def test_start_and_stop(client):
     command = f"docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token {TOKEN}"
-    client.post("/settings/tunnel", data={"tunnel_token": command, "tunnel_enabled": "1", "public_mode": "ics"}, headers=ORIGIN)
+    client.post("/settings/tunnel", data={"tunnel_token": command, "tunnel_enabled": "1", "public_areas": "ics"}, headers=ORIGIN)
     assert core.settings["tunnel_token"] == TOKEN and core.settings["tunnel_enabled"] is True
     assert wait(lambda: tunnel.status["status"] == "connected"), tunnel.status
     assert wait(lambda: TOKEN_SEEN.exists() and TOKEN_SEEN.read_text().strip())
@@ -44,8 +44,8 @@ def test_start_and_stop(client):
     assert TOKEN.encode() not in core.SETTINGS_FILE.read_bytes()
 
     proc = tunnel.status["proc"]
-    client.post("/settings/tunnel", data={"public_mode": "ics"}, headers=ORIGIN)              # checkbox off -> stop
+    client.post("/settings/tunnel", data={"public_areas": "ics"}, headers=ORIGIN)              # checkbox off -> stop
     assert wait(lambda: proc.poll() is not None and tunnel.status["status"] == "off"), tunnel.status
     assert core.settings["tunnel_token"] == TOKEN                                             # token stays stored
-    client.post("/settings/tunnel", data={"clear_token": "1", "public_mode": "ics"}, headers=ORIGIN)
+    client.post("/settings/tunnel", data={"clear_token": "1", "public_areas": "ics"}, headers=ORIGIN)
     assert core.settings["tunnel_token"] == ""

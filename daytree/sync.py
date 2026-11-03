@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 import recurring_ical_events
 from icalendar import Calendar
 
+from daytree import notify
 from daytree.core import COLORS_FILE, DATA, ICS_FILE, STATE_FILE, settings
 
 lock = threading.Lock()          # one sync at a time
@@ -136,6 +137,7 @@ def run_sync():
         except Exception as e:  # noqa: BLE001
             state.update(ok=False, message=str(e)[:300])
     finally:
+        notify.after_sync(state)
         _save_state()
         lock.release()
 
@@ -204,3 +206,8 @@ def occurrences(first, last):
         })
     out.sort(key=lambda e: e["sort"])
     return out
+
+
+def as_json(events):
+    """Events from occurrences() with ISO dates, ready for jsonify."""
+    return [{**e, "date": e["date"].isoformat(), "end_date": e["end_date"].isoformat(), "sort": None} for e in events]

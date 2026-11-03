@@ -21,8 +21,8 @@ TASKS_FILE = DATA / "tasks.enc"            # fully encrypted (Fernet)
 LEGACY_FILE = DATA / "settings.json"       # old plaintext format -> migrated, then deleted
 
 MIN_MINUTES, MAX_MINUTES, STEP_MINUTES = 30, 1440, 30
-PUBLIC_MODES = ("off", "ics", "dashboard")
-SECRET_KEYS = ("password", "tunnel_token", "lock_hash", "api_tokens")   # never passed to templates as they are
+PUBLIC_AREAS = ("ics", "homepage", "api")                  # what the tunnel may reach, chosen in the settings
+SECRET_KEYS = ("password", "tunnel_token", "lock_hash", "api_tokens", "notify_url")   # never passed to templates as they are
 LANGUAGES = ("en", "de")
 DEFAULT_TZ = os.environ.get("TZ", "")                      # from docker-compose / .env
 
@@ -76,13 +76,16 @@ DEFAULTS = {
     "calendars": [],            # [{"name": ..., "code": ...}] from the last login
     "interval_minutes": 180,
     "token": "",                # token embedded in the ICS URL
-    "public_mode": "off",       # off | ics | dashboard (applies to traffic via the tunnel / port 8081)
+    "public_areas": [],         # subset of PUBLIC_AREAS for traffic via the tunnel / port 8081; empty = only /ping
     "public_hostname": "",
     "tunnel_enabled": False,
     "tunnel_token": "",
     "lock_hash": "",            # scrypt hash of the settings padlock password
+    "notify_url": "",           # ntfy topic or webhook for sync failures; the URL itself is the secret
+    "notify_format": "ntfy",    # ntfy | json
     "api_tokens": [],           # [{"id", "name", "hash" (SHA-256), "write", "created", "last_used"}]
     "language": "auto",         # auto | en | de
+    "appearance": "auto",       # auto | light | dark, for the settings pages and the setup popup
     "timezone": "",             # empty = DEFAULT_TZ
     "time_format": "24",        # 24 | 12
     "date_style": "long",       # long | numeric
@@ -119,11 +122,10 @@ def save_settings(s):
 
 
 def load_settings():
-    s = json.loads(json.dumps(DEFAULTS))
-    dirty = False
+    stored, dirty = {}, False
     if SETTINGS_FILE.exists():
         try:
-            s.update(read_encrypted(SETTINGS_FILE))
+            stored = read_encrypted(SETTINGS_FILE)
         except InvalidToken:
             raise SystemExit(
                 "settings.enc cannot be decrypted with the available key. "
@@ -131,20 +133,32 @@ def load_settings():
             )
     elif LEGACY_FILE.exists():
         try:
-            s.update(json.loads(LEGACY_FILE.read_text()))
+            stored = json.loads(LEGACY_FILE.read_text())
             dirty = True
         except Exception:
             pass
-    s["interval_minutes"] = clamp(s["interval_minutes"])
-    if s["public_mode"] not in PUBLIC_MODES:
-        s["public_mode"] = "off"
-    if not s["token"]:
-        s["token"] = secrets.token_urlsafe(24)
-        dirty = True
-    if dirty:
+    s, changed = normalize(stored)
+    if dirty or changed:
         save_settings(s)
         LEGACY_FILE.unlink(missing_ok=True)
     return s
+
+
+def normalize(stored):
+    """Stored settings with defaults for missing keys and old formats brought up to date. Also used for backups.
+    Returns the settings and whether they differ from what was stored."""
+    s = json.loads(json.dumps(DEFAULTS))
+    s.update(stored)
+    dirty = False
+    s["interval_minutes"] = clamp(s["interval_minutes"])
+    if "public_mode" in s:      # up to 0.15: one mode instead of areas
+        s["public_areas"] = {"ics": ["ics"], "dashboard": ["ics", "homepage"]}.get(s.pop("public_mode"), [])
+        dirty = True
+    s["public_areas"] = [a for a in PUBLIC_AREAS if a in s["public_areas"]]
+    if not s["token"]:
+        s["token"] = secrets.token_urlsafe(24)
+        dirty = True
+    return s, dirty
 
 
 settings = load_settings()      # changed in place only, so every module shares the same dict

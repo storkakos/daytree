@@ -59,22 +59,36 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Clock and date:** digital or analog, 12 or 24 hours, seconds, size, time zone and date style.
 - **Font:** family, size and weight.
 - **Language:** German and English, following your browser or set by you.
+- **Appearance:** light, dark or following the device, for the settings and the setup window.
 
 ### Under the hood
 
 - **Calendar sync:** imports one TimeTree calendar every 0.5 to 24 hours (default: 3 hours).
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
-- **Remote access:** an optional built-in Cloudflare tunnel with three exposure modes.
+- **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
+  the API, or any mix.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
-- **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma.
-- **API:** a JSON API for tasks and events, with tokens you create and revoke in the settings.
+- **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma, a note on the homepage when its events are out
+  of date, and a message to ntfy or a webhook when syncing stops working.
+- **API:** a JSON API for calendars, events and tasks, with tokens you create and revoke in the settings.
 - **Small footprint:** one Alpine-based container that runs as a non-root user.
 
 ## Quick start
 
 **You need:** Docker with Compose, and a TimeTree account with an e-mail address and password. Accounts that only sign
 in through Google or Apple have no password and are not supported.
+
+With the prebuilt image for amd64 and arm64, such as a Raspberry Pi:
+
+```bash
+mkdir daytree && cd daytree
+curl -O https://raw.githubusercontent.com/storkakos/daytree/main/docker-compose.yml
+docker compose pull
+docker compose up -d
+```
+
+Or build it from source:
 
 ```bash
 git clone https://github.com/storkakos/daytree.git
@@ -104,6 +118,15 @@ and no way into the settings. This only limits what the page offers: port 8080 s
 | **Monitor in portrait** | Rotate the screen in the operating system. The layout follows automatically. |
 | **iPad or Android tablet** | Open the homepage and add it to the home screen. Use the device's single-app mode to keep it on screen. |
 
+### Installing as an app
+
+On a phone, tablet or computer, the homepage can be installed like an app, without the address bar: in Chrome or
+Edge choose *Install app* or *Add to home screen*, in Safari *Share → Add to Home Screen*. Browsers allow this only over
+HTTPS, so open Daytree through your [reverse proxy](#https-on-your-home-network) or the Cloudflare tunnel first.
+The app opens the normal homepage with the settings; `/kiosk` is not installable.
+
+There is no offline mode: without a connection the app shows that Daytree is unreachable instead of old events.
+
 ## Subscribing from calendar apps
 
 Select the gear icon, copy the **ICS URL** from the **Calendar subscription** section, and add it to your app:
@@ -128,16 +151,17 @@ The tunnel is optional and runs inside the container.
    You can also copy the whole install command, and the app extracts the token.
 2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8081`.
 3. In the settings, under **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
-   hostname. Then choose what is reachable and save.
+   hostname. Then tick what the tunnel may reach and save.
 
-| Mode | Reachable through the tunnel |
+| Area | Reachable through the tunnel |
 |---|---|
-| **Nothing** (default) | `/ping` only |
-| **ICS file only** | `/calendar.ics?token=…` and `/ping` |
-| **Homepage (read-only) + ICS** | The homepage without tasks and settings, the ICS feed and `/ping` |
+| **ICS feed** | `/calendar.ics?token=…` |
+| **Homepage (read-only)** | The homepage and `/kiosk` without tasks and settings, and the data they show |
+| **API** | `/api/…` with an [API token](#api). Read-only tokens can only read. |
 
-Settings, tasks and **Sync now** are never reachable through the tunnel. The app enforces the mode on port 8081, and
-for any request that carries Cloudflare headers.
+Tick any combination. With nothing ticked (the default) only `/ping` answers. Settings and **Sync now** are never
+reachable through the tunnel. The app enforces the areas on port 8081, and for any request that carries Cloudflare
+headers.
 
 > [!WARNING]
 > The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
@@ -148,8 +172,22 @@ If `cloudflared` already runs elsewhere, leave the built-in tunnel disabled and 
 
 ### Uptime monitoring
 
-Point your monitor at `https://<hostname>/ping`. The endpoint is available in every mode, needs no token and only
+Point your monitor at `https://<hostname>/ping`. The endpoint is always available, needs no token and only
 returns `pong`. It shows that the app and the tunnel are up, not whether the last sync succeeded.
+
+### When a sync fails
+
+Daytree uses an unofficial TimeTree API, so a sync can stop working. The homepage then keeps the last events and shows
+a yellow note such as *Last updated 3 days ago*, after a failed sync or once the last success is older than two sync
+intervals. If the homepage cannot reach Daytree at all, it says so.
+
+To get a message, enter an address under **Notifications** in the settings:
+
+- an [ntfy](https://ntfy.sh/) topic such as `https://ntfy.sh/<your-secret-topic>`, with the format *ntfy*, or
+- a webhook that takes JSON with `title` and `message`, with the format *JSON*.
+
+Daytree sends one message when syncing stops working and one when it works again. The message does not contain the
+error, because it can include account details; the settings show it. **Send test message** checks the address.
 
 ## How it works
 
@@ -185,13 +223,15 @@ curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …}` |
-| `/api/tasks/<id>` | `PATCH`, `DELETE` | Mark done with `{"done": true}`, delete |
-| `/api/events` | `GET` | Events of today and the next 7 days |
+| `/api/calendars` | `GET` | The synced calendars with `id` and `name` |
+| `/api/calendars/<id>/events` | `GET` | Events from `?from=` up to `?to=` (ISO dates, at most 366 days). Default: today and the next 7 days |
+| `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …, "done": false}` |
+| `/api/tasks/<id>` | `GET`, `PUT`, `PATCH`, `DELETE` | Read one task, replace it, change `title` or `done`, delete it |
+| `/api/sync` | `POST` | Start a sync now. Answers `202`, or `409` while one is running. Always needs a read-write token |
 | `/api/status` | `GET` | Last sync and tunnel status |
 
-Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Tokens do not
-open anything through the Cloudflare tunnel.
+Tokens are never accepted in the URL. Revoke a token in the settings when an app no longer needs it. Through the
+Cloudflare tunnel the API is reachable only if you tick **API** under *Reachable through the tunnel*.
 
 ## Configuration
 
@@ -206,7 +246,9 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
+| `DAYTREE_VERSION` | `latest` | Version of the prebuilt image, such as `0.23.0` or `0.23`. |
 | `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
+| `HTTPS_URL` | – | Address of your [reverse proxy](#https-on-your-home-network), such as `https://daytree.example.com`. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
@@ -229,6 +271,35 @@ is not affected by a changed host port.
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
 
+### HTTPS on your home network
+
+Port 8080 serves plain HTTP, so on a shared network a padlock password or API token could be read. If a reverse proxy
+such as nginx serves Daytree over HTTPS, set its address in `.env`:
+
+```bash
+HTTPS_URL=https://daytree.example.com
+```
+
+- Browsers that open the homepage or the settings over HTTP are sent to that address.
+- Writes and API tokens over plain HTTP are refused.
+- `/kiosk`, the data it shows, `/ping` and the Docker healthcheck stay on HTTP, for old browsers on wall displays.
+- The Cloudflare tunnel is not affected.
+
+The proxy must pass the original host name and the scheme:
+
+```nginx
+location / {
+    proxy_pass http://<host>:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+> [!WARNING]
+> Keep the reverse proxy on your home network. Daytree treats every request without Cloudflare headers as local, so a
+> proxy that is reachable from the internet would open the settings and tasks to everyone. Use the
+> [Cloudflare tunnel](#remote-access-with-cloudflare) for access from outside.
+
 ### Settings padlock
 
 Anyone on your home network can open the settings. To protect them with a password, set `SETTINGS_LOCK=true` in the
@@ -246,19 +317,38 @@ the settings, then turn the padlock on again.
 
 ## Backups and upgrades
 
+The easiest backup is in the settings, under **Backup**: enter a password and select **Download backup**. The file
+holds the settings with all credentials, the tasks and the waste calendar, encrypted with that password. It does not
+need the key file, so it also moves Daytree to another server. To restore, choose the file, enter its password and
+select **Restore**. Daytree checks the whole file first and changes nothing if the password is wrong or the file is
+damaged. The calendar itself is synced again from TimeTree.
+
+Keep the password somewhere safe: without it the backup cannot be opened.
+
+You can also back up the volumes:
+
 | Volume | Mount | Content |
 |---|---|---|
-| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
+| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `waste.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
 | `daytree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
 
-To upgrade:
+To upgrade the prebuilt image:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+To upgrade a build from source:
 
 ```bash
 git pull
 docker compose up -d --build
 ```
+
+`DAYTREE_VERSION` in `.env` pins the prebuilt image to a version such as `0.23.0`, or to `0.23` for its bug fixes.
 
 Installations from before the Daytree rename used volumes named `timetree-ics_timetree-data` and
 `timetree-ics_timetree-secrets`. Stop the old container and copy both volumes to `daytree_daytree-data` and
@@ -286,8 +376,8 @@ docker exec -i daytree python - < tests/port_check.py
 
 | Test | Requirements | Covers |
 |---|---|---|
-| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, exposure mode and token. TimeTree, `cloudflared` and the web services are mocked. |
-| `tests/port_check.py` | Running container, mode *Nothing* or *ICS file only* | Internal and public port detection against real gunicorn. |
+| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, shared area and token. TimeTree, `cloudflared` and the web services are mocked. |
+| `tests/port_check.py` | Running container, nothing or only the ICS feed shared | Internal and public port detection against real gunicorn. |
 
 `port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.

@@ -1,16 +1,22 @@
 <!doctype html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" class="{{ theme }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="{{ color_scheme }}">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 {% block head %}{% endblock %}
 <title>{{ _("Settings") }}</title>
 <style>
-  :root { --bg:#f2f2f7; --card:#fff; --fg:#000; --muted:#6c6c70; --line:#c6c6c8; --accent:#007aff; --ok:#34c759; --err:#ff3b30; --bar:rgba(249,249,249,.8); --control:rgba(118,118,128,.12); }
-  @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --fg:#fff; --muted:#98989f; --line:#38383a; --accent:#0a84ff; --ok:#30d158; --err:#ff453a; --bar:rgba(29,29,31,.8); --control:rgba(118,118,128,.24); } }
+  {% set dark %}--bg:#000; --card:#1c1c1e; --fg:#fff; --muted:#98989f; --line:#38383a; --accent:#0a84ff; --ok:#30d158; --err:#ff453a; --bar:rgba(29,29,31,.8); --control:rgba(118,118,128,.24); color-scheme:dark;{% endset %}
+  :root { --bg:#f2f2f7; --card:#fff; --fg:#000; --muted:#6c6c70; --line:#c6c6c8; --accent:#007aff; --ok:#34c759; --err:#ff3b30; --bar:rgba(249,249,249,.8); --control:rgba(118,118,128,.12); color-scheme:light; }
+  /* The appearance setting: class "dark" or "light" on <html>, or no class to follow the device */
+  @media (prefers-color-scheme: dark) { :root:not(.light) { {{ dark }} } }
+  :root.dark { {{ dark }} }
+  :root.light { color-scheme:only light; }
+  :root.dark { color-scheme:only dark; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   .bar { position:sticky; top:0; z-index:5; display:flex; align-items:center; min-height:52px; padding:0 16px; background:var(--bar);

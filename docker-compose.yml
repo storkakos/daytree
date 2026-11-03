@@ -2,7 +2,8 @@ name: daytree
 
 services:
   daytree:
-    build: .
+    image: ghcr.io/storkakos/daytree:${DAYTREE_VERSION:-latest}   # prebuilt: docker compose pull
+    build: .                      # from source: docker compose up -d --build
     container_name: daytree
     restart: unless-stopped
     ports:
@@ -11,6 +12,7 @@ services:
     environment:
       TZ: ${TZ:-Europe/Berlin}      # time zone name, e.g. Europe/London
       SETTINGS_LOCK: ${SETTINGS_LOCK:-false}   # true = the settings need a password, which is set in the browser
+      HTTPS_URL: ${HTTPS_URL:-}     # e.g. https://daytree.example.com when a reverse proxy serves HTTPS; empty = off
       # No credentials here: everything is entered in the dashboard under "Settings"
       # and stored encrypted in /data/settings.enc.
     volumes:
