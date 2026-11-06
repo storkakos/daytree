@@ -211,6 +211,7 @@ GERMAN = {
     "Source": "Quelle",
     "Uploaded file": "Hochgeladene Datei",
     "Events page": "Terminseite",
+    "Rename": "Umbenennen",
     "Update now": "Jetzt aktualisieren",
     "Remove this calendar?": "Diesen Kalender entfernen?",
     "Calendar added.": "Kalender hinzugefügt.",
