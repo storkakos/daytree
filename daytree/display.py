@@ -54,6 +54,9 @@ def view():
     v["has_lock_password"] = bool(settings["lock_hash"])
     v["has_notify_url"] = bool(settings["notify_url"])
     v["interval_label"] = hours(settings["interval_minutes"])
+    # A calendar URL can hold a private token: pages only see its host
+    v["sources"] = [{**{k: val for k, val in s.items() if k != "url"},
+                     "host": urllib.parse.urlsplit(s["url"]).hostname if s["kind"] == "url" else None} for s in settings["sources"]]
     v["calendar_name"] = ", ".join(s["name"] for s in settings["sources"] if s["kind"] == "timetree")
     v["timetree_codes"] = [s["id"] for s in settings["sources"] if s["kind"] == "timetree"]
     return v

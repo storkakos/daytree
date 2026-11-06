@@ -1,6 +1,7 @@
 """The settings pages: TimeTree login, sync, homepage appearance, waste collection and sharing."""
 import re
 import secrets
+import urllib.parse
 from datetime import date, datetime
 from zoneinfo import available_timezones
 
@@ -8,7 +9,7 @@ from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_t
 from icalendar import Calendar
 
 from daytree import VERSION, auth, backup, display, notify, sync, tunnel
-from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
+from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, URL_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, new_source, save_settings, settings, timetree_sources, write_encrypted)
 from daytree.i18n import _, hours
 
@@ -20,6 +21,7 @@ TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", 
 
 
 DEFAULT_COLOR = "#8e8e93"       # what the color picker shows for a calendar without a color of its own
+MAX_SOURCES = 20                # calendars from files and URLs
 
 
 def ics_urls(path=None):
@@ -66,6 +68,7 @@ def _render_settings(**extra):
         waste=[(title, display.waste_color(title)) for title in display.waste_types()],
         ics_local=local, ics_pub=pub, tunnel=tunnel.status, lock_enabled=auth.SETTINGS_LOCK, default_color=DEFAULT_COLOR,
         calendar_feeds={s["id"]: ics_urls(f"/ics/{s['id']}?token={s['token']}") for s in settings["sources"]},
+        source_states=sync.state.get("sources", {}), url_minutes=URL_MINUTES,
         api_tokens=tokens, **extra,
     )
 
@@ -138,6 +141,11 @@ def settings_calendars():
         color = request.form.get(f"color_{source['id']}", "")
         if re.fullmatch(r"#[0-9a-fA-F]{6}", color) and not (color == DEFAULT_COLOR and not source["color"]):
             source["color"] = color.lower()
+        if source["kind"] == "url" and request.form.get(f"interval_{source['id']}"):
+            try:
+                source["interval_minutes"] = clamp(request.form[f"interval_{source['id']}"])
+            except ValueError:
+                abort(400)
         source["homepage"] = bool(request.form.get(f"homepage_{source['id']}"))
         source["feed"] = bool(request.form.get(f"feed_{source['id']}"))
     settings["calendar_tags"] = bool(request.form.get("calendar_tags"))
@@ -145,6 +153,61 @@ def settings_calendars():
     if request.headers.get("X-Autosave"):
         return jsonify(message=_("Settings saved."))
     flash(_("Settings saved."), "ok")
+    return redirect(url_for("admin.settings_page"))
+
+
+@bp.post("/settings/sources")
+def settings_sources():
+    """Calendars from a file or a URL: add one, fetch a URL calendar now, or remove one. TimeTree's are chosen above."""
+    def find(source_id):
+        return next((s for s in settings["sources"] if s["id"] == source_id and s["kind"] != "timetree"), None) or abort(404)
+
+    if request.form.get("remove"):
+        source = find(request.form["remove"])
+        settings["sources"].remove(source)
+        save_settings(settings)
+        sync.prune_calendars()
+        flash(_("Calendar removed."), "ok")
+        return redirect(url_for("admin.settings_page"))
+    if request.form.get("refresh"):
+        source = find(request.form["refresh"])
+        if source["kind"] == "url":
+            error = sync.refresh(source)
+            flash(_("Could not load the calendar: {error}").format(error=_(error)) if error else _("Calendar updated."),
+                  "err" if error else "ok")
+        return redirect(url_for("admin.settings_page"))
+
+    if sum(s["kind"] != "timetree" for s in settings["sources"]) >= MAX_SOURCES:
+        flash(_("Remove a calendar first."), "err")
+        return redirect(url_for("admin.settings_page"))
+    name = request.form.get("name", "").strip()[:60]
+    upload, url = request.files.get("file"), request.form.get("url", "").strip()
+    try:
+        if upload and upload.filename:
+            raw = upload.read(sync.MAX_SOURCE_BYTES + 1)
+            if len(raw) > sync.MAX_SOURCE_BYTES:
+                raise ValueError("The file is too large.")
+            source = new_source("file", name or upload.filename.rsplit(".", 1)[0][:60] or _("Calendar"))
+            sync.store_source(source, raw)
+        elif url:
+            parts = urllib.parse.urlsplit(url)
+            if parts.scheme.lower() not in ("https", "http", "webcal") or not parts.hostname or len(url) > 2000:
+                raise ValueError("Enter an address that starts with https://, http:// or webcal://.")
+            source = new_source("url", name or parts.hostname, url=url,
+                                interval_minutes=clamp(request.form.get("interval") or URL_MINUTES))
+            sync.fetch_url(source)
+        else:
+            raise ValueError("Choose a file or enter an address.")
+    except ValueError as e:
+        sync.prune_calendars()                                         # a half-stored calendar does not stay
+        flash(_("Could not load the calendar: {error}").format(error=_(str(e))), "err")
+        return redirect(url_for("admin.settings_page"))
+    settings["sources"].append(source)
+    save_settings(settings)
+    if source["kind"] == "url":
+        sync.state.setdefault("sources", {})[source["id"]] = {"last_run": sync.time.time(), "ok": True, "message": "OK",
+                                                               "last_success": sync._now()}
+    flash(_("Calendar added."), "ok")
     return redirect(url_for("admin.settings_page"))
 
 

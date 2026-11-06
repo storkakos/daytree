@@ -71,6 +71,21 @@
         <label for="color_{{ c.id }}"><strong>{{ c.name }}</strong></label>
         <input id="color_{{ c.id }}" class="swatch" type="color" name="color_{{ c.id }}" value="{{ c.color or default_color }}">
       </div>
+      {% if c.kind != 'timetree' %}
+      {% set status = source_states.get(c.id, {}) %}
+      <div class="row">
+        <span class="label">{{ _("Source") }}</span>
+        <span class="value">{{ c.host if c.kind == 'url' else _("Uploaded file") }}{% if status.ok is false %} · {{ _(status.message) }}{% elif status.last_success %} · {{ status.last_success[:16].replace('T', ' ') }} UTC{% endif %}</span>
+      </div>
+      {% if c.kind == 'url' %}
+      <div class="row">
+        <label for="interval_{{ c.id }}">{{ _("Update every") }}</label>
+        <select id="interval_{{ c.id }}" name="interval_{{ c.id }}">
+          {% for minutes, label in intervals %}<option value="{{ minutes }}" {{ 'selected' if minutes == c.interval_minutes }}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% endif %}
       <div class="row">
         <label for="homepage_{{ c.id }}">{{ _("On the homepage") }}</label>
         <span class="switch"><input id="homepage_{{ c.id }}" type="checkbox" name="homepage_{{ c.id }}" value="1" {{ 'checked' if c.homepage }}><span></span></span>
@@ -90,6 +105,12 @@
         <div class="row" style="padding:0;min-height:0"><input class="mono" id="feed-public-{{ c.id }}" readonly value="{{ public }}"><button type="button" class="copy" data-copy="feed-public-{{ c.id }}">{{ _("Copy") }}</button></div>
       </div>
       {% endif %}
+      {% if c.kind != 'timetree' %}
+      <div class="row">
+        {% if c.kind == 'url' %}<button class="action" form="sources-form" name="refresh" value="{{ c.id }}">{{ _("Update now") }}</button>{% endif %}
+        <button class="action destructive" form="sources-form" name="remove" value="{{ c.id }}" onclick="return confirm(this.dataset.question)" data-question="{{ _('Remove this calendar?') }}">{{ _("Remove calendar") }}</button>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
     <div class="card">
@@ -101,6 +122,27 @@
     <p>{{ _("Events keep the color they have in TimeTree. The color here is for events without one. The ICS feed holds every calendar switched on for it; each calendar also has a link of its own.") }}</p>
   </form>
   {% endif %}
+  <form id="sources-form" method="post" action="{{ url_for('admin.settings_sources') }}"></form>
+
+  <form method="post" action="{{ url_for('admin.settings_sources') }}" enctype="multipart/form-data" class="group">
+    <h2>{{ _("Add a calendar") }}</h2>
+    <div class="card">
+      <div class="row"><label for="source_name">{{ _("Name") }}</label><input id="source_name" name="name" maxlength="60" placeholder="{{ _('For example School holidays') }}"></div>
+      <div class="row"><label for="source_url">{{ _("Address") }}</label><input id="source_url" name="url" type="url" autocomplete="off" placeholder="https://… / webcal://…"></div>
+      <div class="row">
+        <label for="source_interval">{{ _("Update every") }}</label>
+        <select id="source_interval" name="interval">
+          {% for minutes, label in intervals %}<option value="{{ minutes }}" {{ 'selected' if minutes == url_minutes }}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="row stack">
+        <label for="source_file">{{ _("Or a calendar file (.ics)") }}</label>
+        <input id="source_file" type="file" name="file" accept=".ics,text/calendar">
+      </div>
+      <button class="action">{{ _("Add calendar") }}</button>
+    </div>
+    <p>{{ _("School holidays, public holidays or a shift plan: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.") }}</p>
+  </form>
 
   <form method="post" action="{{ url_for('admin.settings_display') }}" id="display" autocomplete="off">
     <section class="group">

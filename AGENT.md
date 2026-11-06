@@ -107,7 +107,7 @@ Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 th
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
-| `/data/calendars/<id>.enc` | One per selected calendar: the repaired ICS and the TimeTree colors by event UID (`fix_ics()` removes COLOR from the feed). Written only after a successful export; files of calendars no longer selected are removed. The feeds are decrypted per request. Up to 0.26 this was the unencrypted `/data/timetree.ics` plus `event_colors.json`, migrated on start. | Encrypted, mode 600 |
+| `/data/calendars/<id>.enc` | One per calendar (TimeTree, uploaded file or URL; source ids are checked against `SOURCE_ID` because they become file names): the repaired ICS and the TimeTree colors by event UID (`fix_ics()` removes COLOR from the feed). Written only after a successful export; files of calendars no longer selected are removed. The feeds are decrypted per request. Up to 0.26 this was the unencrypted `/data/timetree.ics` plus `event_colors.json`, migrated on start. | Encrypted, mode 600 |
 | `/data/state.json` | Last run / success time, event count, last message. | Plain, contains no secrets |
 | `/data/background.json` | Current photos and when they were fetched, so a restart does not change them. | Plain, contains no secrets |
 
@@ -129,7 +129,7 @@ task and the waste calendar, and only then replaces anything; old settings forma
 | `POST /api/background/refresh` | yes, padlock applies | area `api` with a read-write token |
 | `POST /api/sync` | only with a read-write token (`TOKEN_ONLY_PATHS`), so a forged `Origin` cannot get around the padlock | area `api` with a read-write token |
 | `POST /sync` | yes, padlock applies | never |
-| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/calendars`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
+| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/calendars`, `/settings/sources`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
 | `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
 | `GET /ics?token=…` | yes (token required) | area `ics` (token required) |
 | `GET /ics/<id>?token=…` (one calendar, its own token; unknown id → 403 like a wrong token) | yes | area `ics` |
@@ -297,8 +297,9 @@ dependencies give. After a change, update section 4 of this file with what you a
 - Put new code into the module of its area in `daytree/`. `web.py` only joins the areas, and `core.py` stays free of
   Flask.
 - Keep dependencies minimal; every new package must be justified (image size).
-- Background and weather lookups and the notification address the owner sets are the only outgoing calls besides
-  TimeTree. They must fail quietly with a short timeout and never use Bonjourr's own backend. Notifications never
+- Background and weather lookups, the notification address and the calendar addresses the owner sets are the only
+  outgoing calls besides TimeTree. Calendar addresses can hold a private key: store them only in `settings.enc`, pass
+  pages only the host, and never put them in errors, logs or `state.json`. They must fail quietly with a short timeout and never use Bonjourr's own backend. Notifications never
   contain the sync error.
 - The project is GPL-3.0 since the release after 0.9.0. Code from Bonjourr (GPL-3.0) may be reused with credit.
 - The oldest supported browser is Chromium 56. Do not use object spread, CSS grid, `clamp()`, `min()`, `max()`,

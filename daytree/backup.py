@@ -1,4 +1,4 @@
-"""Password-encrypted backup of the settings, tasks and waste calendar, and its restore.
+"""Password-encrypted backup of the settings, tasks, waste calendar and uploaded calendars, and its restore.
 
 The file does not need the key file: it is encrypted with a key derived from its own password, so it can move an
 installation. A restore checks the whole file before it replaces anything.
@@ -13,8 +13,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from icalendar import Calendar
 
 from daytree import VERSION
-from daytree.core import (DEFAULTS, TASKS_FILE, WASTE_FILE, apply_timezone, normalize, read_encrypted, save_settings,
-                          settings, write_encrypted)
+from daytree.core import (DEFAULTS, SOURCE_ID, TASKS_FILE, WASTE_FILE, apply_timezone, calendar_file, normalize,
+                          read_encrypted, save_settings, settings, write_encrypted)
 
 FORMAT = "daytree-backup"
 FORMAT_VERSION = 1
@@ -37,6 +37,9 @@ def export(password):
         "settings": settings,
         "tasks": read_encrypted(TASKS_FILE) if TASKS_FILE.exists() else [],
         "waste": read_encrypted(WASTE_FILE)["ics"] if WASTE_FILE.exists() else None,
+        # TimeTree and URL calendars are fetched again; an uploaded file exists only here
+        "calendars": {s["id"]: read_encrypted(calendar_file(s["id"])) for s in settings["sources"]
+                      if s["kind"] == "file" and calendar_file(s["id"]).exists()},
     }
     n, r, p = SCRYPT
     salt = secrets.token_bytes(16)
@@ -89,8 +92,19 @@ def _checked(content):
                 raise ValueError
         except ValueError:
             raise BackupError("The backup is incomplete.")
+    calendars = content.get("calendars", {})
+    try:
+        if not isinstance(calendars, dict):
+            raise ValueError
+        for source_id, data in calendars.items():
+            if (not SOURCE_ID.fullmatch(source_id) or not isinstance(data, dict) or not isinstance(data.get("ics"), str)
+                    or not isinstance(data.get("colors", {}), dict) or Calendar.from_ical(data["ics"]).name != "VCALENDAR"):
+                raise ValueError
+    except ValueError:
+        raise BackupError("The backup is incomplete.")
     return {"settings": stored, "tasks": [{"id": t["id"], "title": t["title"], "done": t["done"]} for t in tasks],
-            "waste": waste}
+            "waste": waste, "calendars": {k: {"ics": v["ics"], "colors": {str(a): str(b) for a, b in v.get("colors", {}).items()}}
+                                          for k, v in calendars.items()}}
 
 
 def _same_type(value, default):
@@ -114,4 +128,7 @@ def restore(content):
         WASTE_FILE.unlink(missing_ok=True)
     else:
         write_encrypted(WASTE_FILE, {"ics": content["waste"]})
+    for source in settings["sources"]:
+        if source["kind"] == "file" and source["id"] in content["calendars"]:
+            write_encrypted(calendar_file(source["id"]), content["calendars"][source["id"]])
     apply_timezone()

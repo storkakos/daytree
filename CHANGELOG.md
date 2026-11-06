@@ -7,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-06
+
+Calendars from other places.
+
+### Added
+
+- **Add a calendar:** from an address (`https://`, `http://` or `webcal://`) that Daytree fetches on its own
+  interval, or from an `.ics` file. Its events appear between the TimeTree events, with the same choices for color,
+  homepage and ICS feed, and a feed of their own. **Update now** fetches an address at once.
+- A calendar that cannot be fetched keeps its last events; the settings show the reason.
+- Backups include uploaded calendar files.
+
+### Security
+
+- A calendar address can hold a private key. It is stored encrypted, pages only show its host, and errors never
+  contain it.
+
 ## [0.27.0] - 2026-11-06
 
 Several TimeTree calendars at once.
@@ -302,7 +319,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.27.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.28.0...dev
+[0.28.0]: https://github.com/storkakos/daytree/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/storkakos/daytree/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/storkakos/daytree/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/storkakos/daytree/compare/v0.24.2...v0.25.0
