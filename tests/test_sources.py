@@ -97,7 +97,8 @@ def test_only_web_addresses(client, fetched, url):
     (answer(status=404), "HTTP 404"),
     (requests.ConnectionError(f"Max retries exceeded with url: {SECRET_URL}"), "The server could not be reached."),
     (requests.Timeout(SECRET_URL), "The server did not answer in time."),
-    (answer(b"<html>login</html>"), "The file is not a usable calendar."),
+    (answer(b"<html>login</html>"), "The address is neither a calendar file nor an events page Daytree can read."),
+    (answer(b"BEGIN:VCALENDAR broken"), "The file is not a usable calendar."),
 ])
 def test_fetch_errors_never_show_the_url(client, fetched, failure, message):
     answers, _ = fetched

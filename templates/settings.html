@@ -75,7 +75,7 @@
       {% set status = source_states.get(c.id, {}) %}
       <div class="row">
         <span class="label">{{ _("Source") }}</span>
-        <span class="value">{{ c.host if c.kind == 'url' else _("Uploaded file") }}{% if status.ok is false %} · {{ _(status.message) }}{% elif status.last_success %} · {{ status.last_success[:16].replace('T', ' ') }} UTC{% endif %}</span>
+        <span class="value">{{ c.host if c.kind == 'url' else _("Uploaded file") }}{% if status.format == 'page' %} · {{ _("Events page") }}{% elif status.format == 'ics' %} · ICS{% endif %}{% if status.ok is false %} · {{ _(status.message) }}{% elif status.last_success %} · {{ status.last_success[:16].replace('T', ' ') }} UTC{% endif %}</span>
       </div>
       {% if c.kind == 'url' %}
       <div class="row">
@@ -141,7 +141,7 @@
       </div>
       <button class="action">{{ _("Add calendar") }}</button>
     </div>
-    <p>{{ _("School holidays, public holidays or a shift plan: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.") }}</p>
+    <p>{{ _("School holidays, public holidays, a shift plan or a school's events page: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.") }}</p>
   </form>
 
   <form method="post" action="{{ url_for('admin.settings_display') }}" id="display" autocomplete="off">
