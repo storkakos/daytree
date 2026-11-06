@@ -32,12 +32,12 @@ COPY static ./static
 
 USER appuser
 
-# 8080 = dashboard (internal), 8081 = public port for the tunnel (exposure mode is enforced on it)
-EXPOSE 8080 8081
+# One port: requests through the Cloudflare tunnel are recognized by their headers, and only the shared areas answer
+EXPOSE 8080
 VOLUME ["/data", "/secrets"]
 
 HEALTHCHECK --interval=60s --timeout=5s --start-period=20s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/status', timeout=4)" || exit 1
 
 # Exactly ONE worker: sync state, scheduler and tunnel supervisor live in process memory.
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "-b", "0.0.0.0:8081", "--workers", "1", "--threads", "4", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "app:app"]

@@ -37,7 +37,7 @@ from daytree import auth, core, display  # noqa: E402
 from daytree.web import app  # noqa: E402
 
 ORIGIN = {"Origin": "http://localhost"}        # same-site header that passes the CSRF check
-PUBLIC = {"SERVER_PORT": "8081"}               # environ_overrides for a request through the tunnel
+PUBLIC = {"HTTP_CF_CONNECTING_IP": "203.0.113.9"}   # environ_overrides for a request through the tunnel
 
 
 @pytest.fixture

@@ -8,7 +8,6 @@ from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_t
 from icalendar import Calendar
 
 from daytree import VERSION, auth, backup, display, notify, sync, tunnel
-from daytree.auth import PUBLIC_PORT
 from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
                           apply_timezone, clamp, save_settings, settings, write_encrypted)
 from daytree.i18n import _, hours
@@ -21,7 +20,7 @@ TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", 
 
 
 def ics_urls():
-    path = "/calendar.ics?token=" + settings["token"]
+    path = "/ics?token=" + settings["token"]
     local = request.host_url.rstrip("/") + path
     pub = f"https://{settings['public_hostname']}{path}" if settings["public_hostname"] else None
     return local, pub
@@ -49,7 +48,7 @@ def _render_settings(**extra):
         timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
         default_timezone=DEFAULT_TZ or "UTC", fonts=display.FONTS, version=VERSION,
         waste=[(title, display.waste_color(title)) for title in display.waste_types()],
-        ics_local=local, ics_pub=pub, tunnel=tunnel.status, public_port=PUBLIC_PORT, lock_enabled=auth.SETTINGS_LOCK,
+        ics_local=local, ics_pub=pub, tunnel=tunnel.status, lock_enabled=auth.SETTINGS_LOCK,
         api_tokens=tokens, **extra,
     )
 

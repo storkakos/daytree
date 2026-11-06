@@ -313,7 +313,7 @@
       {% endif %}
       <div class="row"><label for="public_hostname">{{ _("Public hostname") }}</label><input id="public_hostname" name="public_hostname" value="{{ s.public_hostname }}" placeholder="calendar.example.com" autocapitalize="off" spellcheck="false"></div>
     </div>
-    <p>{{ _("In Cloudflare, set the public hostname to the service HTTP and localhost:{port}.").format(port=public_port) }}</p>
+    <p>{{ _("In Cloudflare, set the public hostname to the service HTTP and localhost:{port}.").format(port=8080) }}</p>
   </form>
 
   <section class="group">
