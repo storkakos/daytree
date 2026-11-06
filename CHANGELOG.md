@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-11-07
+
+### Changed
+
+- A pencil next to each calendar name under **Calendars** shows that it can be renamed; the name looks like a
+  field while it is being edited.
+
 ## [0.31.1] - 2026-11-07
 
 ### Fixed
@@ -351,7 +358,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.31.1...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.32.0...dev
+[0.32.0]: https://github.com/storkakos/daytree/compare/v0.31.1...v0.32.0
 [0.31.1]: https://github.com/storkakos/daytree/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/storkakos/daytree/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/storkakos/daytree/compare/v0.29.0...v0.30.0
