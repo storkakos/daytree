@@ -1,8 +1,8 @@
 """The ICS file: repairing the exporter's output and reading events back for the homepage."""
-import json
 from datetime import date, datetime, timedelta
 
 import pytest
+from conftest import use_calendar
 
 from daytree import core, sync
 
@@ -16,7 +16,7 @@ def d(days, fmt="%Y%m%d"):
 @pytest.fixture
 def calendar():
     """All-day, time zone, UTC, recurring (with EXDATE), past and far-future events."""
-    core.ICS_FILE.write_bytes("\r\n".join([
+    return use_calendar("\r\n".join([
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//test//EN",
         "BEGIN:VEVENT", "UID:1", "SUMMARY:AllDay", f"DTSTART;VALUE=DATE:{d(2)}", f"DTEND;VALUE=DATE:{d(3)}", "END:VEVENT",
         "BEGIN:VEVENT", "UID:2", "SUMMARY:Tokyo", f"DTSTART;TZID=Asia/Tokyo:{d(3)}T090000", f"DTEND;TZID=Asia/Tokyo:{d(3)}T100000", "END:VEVENT",
@@ -26,10 +26,7 @@ def calendar():
         "BEGIN:VEVENT", "UID:5", "SUMMARY:Past", f"DTSTART;VALUE=DATE:{d(-30)}", f"DTEND;VALUE=DATE:{d(-29)}", "END:VEVENT",
         "BEGIN:VEVENT", "UID:6", "SUMMARY:Far", f"DTSTART;VALUE=DATE:{d(90)}", f"DTEND;VALUE=DATE:{d(91)}", "END:VEVENT",
         "END:VCALENDAR", "",
-    ]).encode())
-    yield
-    core.ICS_FILE.unlink(missing_ok=True)
-    core.COLORS_FILE.unlink(missing_ok=True)
+    ]))
 
 
 def test_occurrences(calendar):
@@ -45,10 +42,14 @@ def test_occurrences(calendar):
 def test_event_colors(calendar):
     raw = b"BEGIN:VEVENT\r\nUID:long-\r\n id\r\nCOLOR:#47b2f7\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:2\r\nCOLOR:red\r\nEND:VEVENT\r\n"
     assert sync.event_colors(raw) == {"long-id": "#47b2f7"}
-    core.COLORS_FILE.write_text(json.dumps({"1": "#e73b3b"}))
+    sync.save_calendar("fam123", sync.load_calendar("fam123")["ics"], {"1": "#e73b3b"})
     events = sync.occurrences(TODAY, TODAY + timedelta(days=61))
     assert next(e for e in events if e["title"] == "AllDay")["color"] == "#e73b3b"
     assert next(e for e in events if e["title"] == "Utc")["color"] is None
+    calendar["color"] = "#112233"                                             # for events without a color of their own
+    events = sync.occurrences(TODAY, TODAY + timedelta(days=61))
+    assert next(e for e in events if e["title"] == "AllDay")["color"] == "#e73b3b"
+    assert next(e for e in events if e["title"] == "Utc")["color"] == "#112233"
 
 
 def test_api_events(client, calendar):

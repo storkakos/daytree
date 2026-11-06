@@ -66,7 +66,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 Browser / Outlook ──► :8080 (internal) ┐
 Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 threads) ─► Flask app (daytree/)
                                          ┘        │
-                                                  ├─ scheduler thread  ─► `timetree-exporter` subprocess ─► /data/timetree.ics
+                                                  ├─ scheduler thread  ─► `timetree-exporter` subprocess ─► /data/calendars/<code>.enc
                                                   ├─ tunnel supervisor ─► `cloudflared tunnel run` subprocess (TUNNEL_TOKEN via env)
                                                   └─ /data/settings.enc (Fernet), key in /secrets/secret.key
 ```
@@ -81,7 +81,7 @@ Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 th
 | `daytree/sync.py` | TimeTree login and export, ICS repair, the scheduler, and reading events from the ICS file. |
 | `daytree/tunnel.py` | The `cloudflared` supervisor. |
 | `daytree/display.py` | The homepage, `/kiosk` and their data: config, events, weather, background photos, waste bins. |
-| `daytree/api.py` | Tasks API, `/api/status`, `/ping` and `/ics` (`/calendar.ics` redirects there). |
+| `daytree/api.py` | Tasks API, `/api/status`, `/ping`, `/ics` (all calendars switched on for the feed, combined) and `/ics/<id>` (one calendar, its own token); `/calendar.ics` redirects to `/ics`. |
 | `daytree/admin.py` | The settings pages and their forms. |
 | `daytree/web.py` | Builds the Flask app from the areas above, registers the access guard and starts the threads. |
 | `daytree/i18n.py` | German translations (English strings are the keys) and the language of a request. |
@@ -107,8 +107,7 @@ Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 th
 | `/data/tasks.enc` | Tasks shown on the homepage, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/data/waste.enc` | The uploaded waste collection calendar, as one Fernet-encrypted JSON blob. | Encrypted, mode 600 |
 | `/secrets/secret.key` | Fernet key, generated on first start (or `SECRET_KEY` env / `SECRET_KEY_FILE`). | Separate volume, mode 600 |
-| `/data/timetree.ics` | Latest successful export. Replaced atomically only on success. | **Not encrypted** (it must be served; contains event titles) |
-| `/data/event_colors.json` | Event UID to TimeTree color, for the homepage bullets. `fix_ics()` removes COLOR from the published feed. | Plain, contains no secrets |
+| `/data/calendars/<id>.enc` | One per selected calendar: the repaired ICS and the TimeTree colors by event UID (`fix_ics()` removes COLOR from the feed). Written only after a successful export; files of calendars no longer selected are removed. The feeds are decrypted per request. Up to 0.26 this was the unencrypted `/data/timetree.ics` plus `event_colors.json`, migrated on start. | Encrypted, mode 600 |
 | `/data/state.json` | Last run / success time, event count, last message. | Plain, contains no secrets |
 | `/data/background.json` | Current photos and when they were fetched, so a restart does not change them. | Plain, contains no secrets |
 
@@ -130,9 +129,10 @@ task and the waste calendar, and only then replaces anything; old settings forma
 | `POST /api/background/refresh` | yes, padlock applies | area `api` with a read-write token |
 | `POST /api/sync` | only with a read-write token (`TOKEN_ONLY_PATHS`), so a forged `Origin` cannot get around the padlock | area `api` with a read-write token |
 | `POST /sync` | yes, padlock applies | never |
-| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
+| `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/calendars`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
 | `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
 | `GET /ics?token=…` | yes (token required) | area `ics` (token required) |
+| `GET /ics/<id>?token=…` (one calendar, its own token; unknown id → 403 like a wrong token) | yes | area `ics` |
 | `GET /calendar.ics?…` (old address) | 301 to `/ics` with the same query | area `ics`: 301 to `/ics` |
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, whatever is shared |
 | anything else on the public side | – | 404; `/api/` in area `api` without a token: 401 |
@@ -184,7 +184,7 @@ first-time setup on the homepage works.
   - Version 1.0.0 writes all-day dates without `VALUE=DATE` and a VTIMEZONE that only covers the stored
     start dates. `fix_ics()` in `daytree/sync.py` repairs both after every export and also adds `CALSCALE`, `METHOD`
     and `X-WR-CALNAME` and removes `COLOR`. Keep the header changes when upstream fixes the defects.
-- Every `/ics` and `/calendar.ics` request is logged with method, status and user agent, never with the query string.
+- Every `/ics`, `/ics/<id>` and `/calendar.ics` request is logged with method, status and user agent, never with the query string.
 - `cloudflared` official image: binary at `/usr/local/bin/cloudflared`, built with `CGO_ENABLED=0`
   (static → runs on Alpine); reads `TUNNEL_TOKEN` from the environment; logs the line
   `Registered tunnel connection` when a connection is established (used for the "connected" status).
@@ -257,7 +257,7 @@ dependencies give. After a change, update section 4 of this file with what you a
 
 - [ ] `docker compose up -d --build` succeeds; container becomes healthy.
 - [ ] First start creates `/secrets/secret.key` (600) and `/data/settings.enc`; `grep` for the TimeTree password, ICS token and tunnel token in `/data` and `/secrets` finds nothing in plaintext.
-- [ ] Settings → sign-in lists the real calendars; selecting one and saving works; **Sync now** produces `/data/timetree.ics`.
+- [ ] Settings → sign-in lists the real calendars; ticking two and saving works; **Sync now** produces one `/data/calendars/<code>.enc` each.
 - [ ] Changing the interval in the UI changes the next-sync time without a restart.
 - [ ] `GET /ics` → 403 without/with wrong token, 200 with the correct one; `/calendar.ics` → 301 to `/ics`.
 - [ ] Area `ics` only: via the public hostname only `/ics?token=…` and `/ping` work; `/`, `/settings`, `/api/status` → 404.

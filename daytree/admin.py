@@ -9,7 +9,7 @@ from icalendar import Calendar
 
 from daytree import VERSION, auth, backup, display, notify, sync, tunnel
 from daytree.core import (DEFAULT_TZ, LANGUAGES, MAX_MINUTES, MIN_MINUTES, PUBLIC_AREAS, STEP_MINUTES, WASTE_FILE,
-                          apply_timezone, clamp, save_settings, settings, write_encrypted)
+                          apply_timezone, clamp, new_source, save_settings, settings, timetree_sources, write_encrypted)
 from daytree.i18n import _, hours
 
 bp = Blueprint("admin", __name__)
@@ -19,11 +19,27 @@ MAX_TOKENS = 20
 TIMEZONE_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", "Australia/", "Europe/", "Indian/", "Pacific/", "UTC")
 
 
-def ics_urls():
-    path = "/ics?token=" + settings["token"]
+DEFAULT_COLOR = "#8e8e93"       # what the color picker shows for a calendar without a color of its own
+
+
+def ics_urls(path=None):
+    path = path or "/ics?token=" + settings["token"]
     local = request.host_url.rstrip("/") + path
     pub = f"https://{settings['public_hostname']}{path}" if settings["public_hostname"] else None
     return local, pub
+
+
+def select_timetree(codes):
+    """Makes the TimeTree calendars with these codes the selected ones, in TimeTree's order. Calendars that stay
+    selected keep their color, switches and token."""
+    current = {s["id"]: s for s in timetree_sources()}
+    chosen = []
+    for calendar in settings["calendars"]:
+        if calendar["code"] in codes:
+            source = current.get(calendar["code"]) or new_source("timetree", calendar["name"], calendar["code"])
+            source["name"] = calendar["name"]
+            chosen.append(source)
+    settings["sources"] = chosen + [s for s in settings["sources"] if s["kind"] != "timetree"]
 
 
 @bp.post("/sync")
@@ -48,7 +64,8 @@ def _render_settings(**extra):
         timezones=sorted(z for z in available_timezones() if z.startswith(TIMEZONE_REGIONS)),
         default_timezone=DEFAULT_TZ or "UTC", fonts=display.FONTS, version=VERSION,
         waste=[(title, display.waste_color(title)) for title in display.waste_types()],
-        ics_local=local, ics_pub=pub, tunnel=tunnel.status, lock_enabled=auth.SETTINGS_LOCK,
+        ics_local=local, ics_pub=pub, tunnel=tunnel.status, lock_enabled=auth.SETTINGS_LOCK, default_color=DEFAULT_COLOR,
+        calendar_feeds={s["id"]: ics_urls(f"/ics/{s['id']}?token={s['token']}") for s in settings["sources"]},
         api_tokens=tokens, **extra,
     )
 
@@ -73,35 +90,62 @@ def settings_login():
         return _back()
     settings.update(email=email, password=password, calendars=cals)
     if request.form.get("setup"):
-        settings.update(calendar_code="", calendar_name="")              # the setup asks for the calendar next
-    elif not any(c["code"] == settings["calendar_code"] for c in cals):
-        # previous selection no longer valid -> preselect the first calendar
-        settings.update(calendar_code=cals[0]["code"] if cals else "", calendar_name=cals[0]["name"] if cals else "")
+        select_timetree(set())                                         # the setup asks for the calendar next
+    else:
+        # calendars TimeTree no longer offers drop out; if none is left, the first one is preselected
+        codes = {s["id"] for s in timetree_sources()} & {c["code"] for c in cals}
+        select_timetree(codes or {c["code"] for c in cals[:1]})
     save_settings(settings)
+    sync.prune_calendars()
     flash(_("Signed in. {count} calendars found.").format(count=len(cals)), "ok")
     return _back()
 
 
 @bp.post("/settings/save")
 def settings_save():
-    """Save calendar selection and sync interval."""
+    """Save the calendar selection and the sync interval. The setup sends one calendar_code, the settings a list."""
     try:
         settings["interval_minutes"] = clamp(request.form["interval"])
     except (KeyError, ValueError):
         abort(400)
-    code = request.form.get("calendar_code", "")
-    match = next((c for c in settings["calendars"] if c["code"] == code), None)
-    if match:
-        settings.update(calendar_code=match["code"], calendar_name=match["name"])
+    offered = {c["code"] for c in settings["calendars"]}
+    if request.form.get("calendars_form"):
+        codes = set(request.form.getlist("calendar")) & offered
+        if not codes:
+            flash(_("Choose at least one calendar."), "err")
+            return _back()
+        select_timetree(codes)
+    elif request.form.get("calendar_code") in offered:
+        select_timetree({request.form["calendar_code"]})
     if request.form.get("new_token"):
         settings["token"] = secrets.token_urlsafe(24)
+        for source in settings["sources"]:
+            source["token"] = secrets.token_urlsafe(24)
         flash(_("New token generated. Update the ICS URL in your calendar apps."), "ok")
     save_settings(settings)
+    sync.prune_calendars()
     sync.reset_timer()
     flash(_("Settings saved."), "ok")
     if request.form.get("sync_now"):
         sync.start_in_background()
     return _back()
+
+
+@bp.post("/settings/calendars")
+def settings_calendars():
+    """Per calendar: its color, whether the homepage shows it and whether it is part of /ics. And the name tags."""
+    for source in settings["sources"]:
+        color = request.form.get(f"color_{source['id']}", "")
+        if re.fullmatch(r"#[0-9a-fA-F]{6}", color) and not (color == DEFAULT_COLOR and not source["color"]):
+            source["color"] = color.lower()
+        source["homepage"] = bool(request.form.get(f"homepage_{source['id']}"))
+        source["feed"] = bool(request.form.get(f"feed_{source['id']}"))
+    settings["calendar_tags"] = bool(request.form.get("calendar_tags"))
+    save_settings(settings)
+    if request.headers.get("X-Autosave"):
+        return jsonify(message=_("Settings saved."))
+    flash(_("Settings saved."), "ok")
+    return redirect(url_for("admin.settings_page"))
 
 
 def _number(name, low, high):

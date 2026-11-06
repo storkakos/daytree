@@ -13,7 +13,7 @@ LOCK_HASH = auth.hash_password(PASSWORD)
 @pytest.fixture
 def lock_on(monkeypatch):
     monkeypatch.setattr(auth, "SETTINGS_LOCK", True)
-    core.settings.update(calendar_code="fam123", lock_hash=LOCK_HASH)
+    core.settings.update(sources=[core.new_source("timetree", "Family", "fam123")], lock_hash=LOCK_HASH)
 
 
 def unlock(client, password=PASSWORD):
@@ -101,10 +101,10 @@ def test_password_change_locks_other_browsers(client, lock_on):
 
 
 def test_first_time_setup_works_while_locked(client, lock_on):
-    core.settings["calendar_code"] = ""
+    core.settings["sources"] = []
     core.settings["calendars"] = [{"name": "Family", "code": "fam123"}]
     r = client.post("/settings/save", data={"calendar_code": "fam123", "interval": "180", "setup": "1"}, headers=ORIGIN)
-    assert r.status_code == 302 and core.settings["calendar_code"] == "fam123"
+    assert r.status_code == 302 and [s["id"] for s in core.settings["sources"]] == ["fam123"]
     assert client.post("/settings/save", data={"interval": "180"}, headers=ORIGIN).status_code == 403   # set up now
 
 
