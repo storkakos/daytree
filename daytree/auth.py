@@ -13,7 +13,6 @@ from flask import Response, abort, redirect, render_template, request
 
 from daytree.core import needs_setup, save_settings, settings
 
-PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8081"))   # port the Cloudflare tunnel points to
 
 
 def _https_url(value):
@@ -43,12 +42,9 @@ _lock = threading.Lock()
 
 
 def is_public():
-    """True if the request arrived on the public port (tunnel) or carries Cloudflare headers."""
-    try:
-        port = int(request.environ.get("SERVER_PORT", 0))
-    except ValueError:
-        port = 0
-    return port == PUBLIC_PORT or "Cf-Ray" in request.headers or "Cf-Connecting-Ip" in request.headers
+    """True if the request came through Cloudflare, which adds these headers to everything it forwards.
+    A request without them is from the home network, so port 8080 must never be exposed any other way."""
+    return "Cf-Ray" in request.headers or "Cf-Connecting-Ip" in request.headers
 
 
 def guard():
@@ -77,7 +73,7 @@ def guard():
 def _public_rules(token):
     """The public side reaches only the areas ticked in the settings; everything else does not exist there."""
     areas, path = settings["public_areas"], request.path
-    if "ics" in areas and path == "/calendar.ics":
+    if "ics" in areas and path in ("/ics", "/calendar.ics"):
         return                                   # the ICS token is checked in the route
     if "homepage" in areas and request.method == "GET" and (path in HOMEPAGE_PATHS or path.startswith("/static/")):
         return

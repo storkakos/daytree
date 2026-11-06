@@ -76,7 +76,7 @@ DEFAULTS = {
     "calendars": [],            # [{"name": ..., "code": ...}] from the last login
     "interval_minutes": 180,
     "token": "",                # token embedded in the ICS URL
-    "public_areas": [],         # subset of PUBLIC_AREAS for traffic via the tunnel / port 8081; empty = only /ping
+    "public_areas": [],         # subset of PUBLIC_AREAS for requests through the tunnel; empty = only /ping
     "public_hostname": "",
     "tunnel_enabled": False,
     "tunnel_token": "",

@@ -1,2 +1,2 @@
 """Daytree: TimeTree -> ICS bridge with a homepage. web.py puts the modules together into the Flask app."""
-VERSION = "0.24.2"
+VERSION = "0.25.0"

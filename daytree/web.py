@@ -45,7 +45,7 @@ def no_stale_pages(response):
 @app.after_request
 def log_ics_fetch(response):
     # Shows whether calendar services reach the app. The path only: the query string holds the token.
-    if request.path == "/calendar.ics":
+    if request.path in ("/ics", "/calendar.ics"):
         agent = request.headers.get("User-Agent", "-")[:120]
         print(f"ICS fetch: {request.method} {response.status_code} public={auth.is_public()} agent={agent}", flush=True)
     return response

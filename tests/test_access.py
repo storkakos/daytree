@@ -52,18 +52,18 @@ TABLE = {
     ("POST", "/sync"):                           (OK, 403, 404, 404, 404, 404),
     ("POST", "/api/sync"):                       (UNAUTHORIZED, UNAUTHORIZED, 404, 404, 404, UNAUTHORIZED),
     ("GET", "/ping"):                            (200, 200, 200, 200, 200, 200),
-    ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 404, 200, 404, 404),
-    ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 404, 403, 404, 404),
-    ("GET", "/calendar.ics"):                    (403, 403, 404, 403, 404, 404),
+    ("GET", f"/ics?token={GOOD}"):               (200, 200, 404, 200, 404, 404),
+    ("GET", f"/ics?token={BAD}"):                (403, 403, 404, 403, 404, 404),
+    ("GET", "/ics"):                             (403, 403, 404, 403, 404, 404),
+    ("GET", f"/calendar.ics?token={GOOD}"):      (301, 301, 404, 301, 404, 404),
 }
 SIDES = {
     "internal": {},
     "internal, padlock closed": {},
-    "port 8081": {"environ_overrides": PUBLIC},
     "Cloudflare header": {"headers": {"Cf-Ray": "abc"}},
     "Cloudflare client IP": {"headers": {"Cf-Connecting-Ip": "203.0.113.9"}},
 }
-REAL = {"api.ping", "api.calendar_ics", "static"}
+REAL = {"api.ping", "api.calendar_ics", "api.old_calendar_ics", "static"}
 
 
 @pytest.fixture
@@ -137,8 +137,8 @@ TOKENS = {
     ("POST", "/sync"):                           (403, 403, 403, 403),
     ("POST", "/api/sync"):                       (UNAUTHORIZED, 403, OK, UNAUTHORIZED),
     ("GET", "/ping"):                            (200, 200, 200, 200),
-    ("GET", f"/calendar.ics?token={GOOD}"):      (200, 200, 200, 200),
-    ("GET", f"/calendar.ics?token={BAD}"):       (403, 403, 403, 403),
+    ("GET", f"/ics?token={GOOD}"):               (200, 200, 200, 200),
+    ("GET", f"/ics?token={BAD}"):                (403, 403, 403, 403),
 }
 
 
@@ -216,7 +216,7 @@ def test_every_route_is_in_the_tables():
 @pytest.mark.parametrize("areas", AREAS)
 def test_internal_side_ignores_the_areas(stubbed, areas):
     core.settings["public_areas"] = areas
-    assert stubbed.get("/settings").status_code == OK and stubbed.get(f"/calendar.ics?token={GOOD}").status_code == 200
+    assert stubbed.get("/settings").status_code == OK and stubbed.get(f"/ics?token={GOOD}").status_code == 200
 
 
 @pytest.mark.parametrize("headers, expected", [
@@ -229,6 +229,22 @@ def test_internal_side_ignores_the_areas(stubbed, areas):
 @pytest.mark.parametrize("method, path", [(m, p) for m, p in TABLE if m != "GET" and p not in auth.TOKEN_ONLY_PATHS])
 def test_csrf(stubbed, method, path, headers, expected):
     assert stubbed.open(path, method=method, headers=headers).status_code == expected
+
+
+def test_the_old_feed_address_keeps_working(client):
+    """Calendars that subscribed to /calendar.ics are sent on to /ics with their token."""
+    r = client.get(f"/calendar.ics?token={core.settings['token']}", environ_overrides=PUBLIC)
+    assert r.status_code == 404                                                  # nothing shared, nothing there
+    core.settings["public_areas"] = ["ics"]
+    r = client.get(f"/calendar.ics?token={core.settings['token']}", environ_overrides=PUBLIC)
+    assert r.status_code == 301 and r.headers["Location"] == f"/ics?token={core.settings['token']}"
+
+
+def test_the_port_does_not_make_a_request_public(stubbed):
+    """Only the Cloudflare headers count, whatever port the request arrived on."""
+    for port in ("8080", "8081"):
+        assert stubbed.get("/settings", environ_overrides={"SERVER_PORT": port}).status_code == OK
+        assert stubbed.get("/settings", environ_overrides={"SERVER_PORT": port, **PUBLIC}).status_code == 404
 
 
 def test_public_homepage_reveals_nothing(client):
@@ -253,7 +269,7 @@ def test_areas_and_hostname_validated(client):
     save([])
     assert core.settings["public_areas"] == []
     save(["ics"], public_hostname="calendar.example.com")
-    assert f"https://calendar.example.com/calendar.ics?token={core.settings['token']}".encode() in client.get("/settings").data
+    assert f"https://calendar.example.com/ics?token={core.settings['token']}".encode() in client.get("/settings").data
     save(["ics"], public_hostname="evil.com/<x>")
     assert core.settings["public_hostname"] == "calendar.example.com"
 

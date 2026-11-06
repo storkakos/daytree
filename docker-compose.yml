@@ -7,8 +7,7 @@ services:
     container_name: daytree
     restart: unless-stopped
     ports:
-      - "${PORT:-8080}:8080"        # dashboard (use on the home network only)
-      # Port 8081 is intentionally NOT published: the built-in Cloudflare tunnel reaches it internally.
+      - "${PORT:-8080}:8080"        # home network only; the built-in tunnel reaches the app inside the container
     environment:
       TZ: ${TZ:-Europe/Berlin}      # time zone name, e.g. Europe/London
       SETTINGS_LOCK: ${SETTINGS_LOCK:-false}   # true = the settings need a password, which is set in the browser

@@ -3,7 +3,7 @@ import secrets
 import threading
 from datetime import date, timedelta
 
-from flask import Blueprint, Response, abort, jsonify, request
+from flask import Blueprint, Response, abort, jsonify, redirect, request
 
 from daytree import sync, tunnel
 from daytree.auth import token_ok
@@ -167,7 +167,7 @@ def ping():
     return Response("pong\n", mimetype="text/plain", headers={"Cache-Control": "no-store"})
 
 
-@bp.route("/calendar.ics")
+@bp.route("/ics")
 def calendar_ics():
     if not token_ok(request.args.get("token")):
         abort(403)
@@ -175,3 +175,10 @@ def calendar_ics():
         abort(404)
     return Response(ICS_FILE.read_bytes(), mimetype="text/calendar",
                     headers={"Content-Disposition": "inline; filename=timetree.ics"})
+
+
+@bp.route("/calendar.ics")
+def old_calendar_ics():
+    """The old address of the feed, for calendars that subscribed before /ics. Keeps the token in the query."""
+    query = request.query_string.decode()
+    return redirect("/ics" + (f"?{query}" if query else ""), 301)

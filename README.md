@@ -149,26 +149,30 @@ The tunnel is optional and runs inside the container.
 
 1. In Cloudflare Zero Trust, go to *Networks → Tunnels → Create a tunnel → Cloudflared* and copy the **token**.
    You can also copy the whole install command, and the app extracts the token.
-2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8081`.
+2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8080`.
 3. In the settings, under **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
    hostname. Then tick what the tunnel may reach and save.
 
 | Area | Reachable through the tunnel |
 |---|---|
-| **ICS feed** | `/calendar.ics?token=…` |
+| **ICS feed** | `/ics?token=…` |
 | **Homepage (read-only)** | The homepage and `/kiosk` without tasks and settings, and the data they show |
 | **API** | `/api/…` with an [API token](#api). Read-only tokens can only read. |
 
 Tick any combination. With nothing ticked (the default) only `/ping` answers. Settings and **Sync now** are never
-reachable through the tunnel. The app enforces the areas on port 8081, and for any request that carries Cloudflare
-headers.
+reachable through the tunnel. The app recognizes requests through Cloudflare by the headers Cloudflare adds to each
+of them, and enforces the areas for those.
+
+> [!CAUTION]
+> A request without Cloudflare headers counts as coming from your home network and reaches everything. Expose port
+> 8080 only through a Cloudflare tunnel, never by port forwarding on your router or through another proxy.
 
 > [!WARNING]
 > The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Zero Trust
 > **Access policy**, or keep it on your home network.
 
 If `cloudflared` already runs elsewhere, leave the built-in tunnel disabled and point its public hostname at
-`http://daytree:8081` on the same Docker network.
+`http://daytree:8080` on the same Docker network.
 
 ### Uptime monitoring
 
@@ -196,12 +200,13 @@ flowchart LR
     TT[TimeTree] -->|scheduled sync| APP[Daytree<br>container]
     APP --- DATA[(Encrypted settings,<br>tasks and ICS file)]
     APP -->|port 8080| LAN[Homepage and settings<br>home network]
-    APP -->|port 8081| CF[Cloudflare tunnel]
+    APP -->|port 8080, Cloudflare headers| CF[Cloudflare tunnel]
     CF --> CAL[Outlook, Google Calendar,<br>uptime monitors]
 ```
 
-Port 8080 serves the homepage and settings and should stay on your home network. Port 8081 is the public side: the
-app decides what is reachable there, regardless of how the tunnel is configured in Cloudflare.
+Port 8080 serves the homepage and settings on your home network. Requests that come through the Cloudflare tunnel
+reach the same port, and the app answers them only for the shared areas, regardless of how the tunnel is configured
+in Cloudflare.
 
 Daytree calls a few outside services: TimeTree for your calendar, [Open-Meteo](https://open-meteo.com/) for weather if
 you turn it on, and [Lorem Picsum](https://picsum.photos/) for photos. Displays load the photos directly from Lorem
@@ -253,12 +258,11 @@ TZ=Europe/London
 | `SECRET_KEY` | – | Fernet key that overrides the key file. See [`.env.example`](.env.example). |
 | `SECRET_KEY_FILE` | `/secrets/secret.key` | Location of the key file. |
 | `DATA_DIR` | `/data` | Data directory. |
-| `PUBLIC_PORT` | `8081` | Port treated as public, where the tunnel points. |
 | `CLOUDFLARED_TAG` (build argument) | `2026.10.7` | Version of the `cloudflared` image to copy the binary from. |
 
 The host port cannot be changed in the app. Port mappings belong to Docker on the host, and giving the app access to
-the Docker socket would be a security risk. The app keeps using ports 8080 and 8081 inside the container, so a tunnel
-is not affected by a changed host port.
+the Docker socket would be a security risk. The app keeps using port 8080 inside the container, so a tunnel is not
+affected by a changed host port.
 
 ## Security
 
