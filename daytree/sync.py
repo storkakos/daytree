@@ -339,6 +339,7 @@ def _occurrences(source, first, last):
             "all_day": not timed,
             "color": colors.get(str(ev.get("UID"))) or source["color"] or None,
             "calendar": source["name"],
+            "tag": source["tag"],
             "calendar_id": source["id"],
             "start_ts": int(start_raw.timestamp()) if timed else None,
             "end_ts": int(end_raw.timestamp()) if timed else None,

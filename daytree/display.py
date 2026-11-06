@@ -86,7 +86,6 @@ def display_config():
         "clockSize": settings["clock_size"],
         "showTasks": settings["tasks_enabled"] and not is_public(),
         "upcomingDays": settings["upcoming_days"],
-        "calendarTags": settings["calendar_tags"],
         "greeting": settings["greeting_enabled"],
         "name": "" if is_public() else settings["greeting_name"],
         "weather": settings["weather_enabled"],

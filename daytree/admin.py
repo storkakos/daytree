@@ -134,7 +134,7 @@ def settings_save():
 
 @bp.post("/settings/calendars")
 def settings_calendars():
-    """Per calendar: its name, color, whether the homepage shows it and whether it is part of /ics. And the name tags."""
+    """Per calendar: its name, color, whether the homepage shows it and its name tag, and whether it is part of /ics."""
     for source in settings["sources"]:
         name = request.form.get(f"name_{source['id']}", "").strip()[:60]
         if name:
@@ -149,7 +149,7 @@ def settings_calendars():
                 abort(400)
         source["homepage"] = bool(request.form.get(f"homepage_{source['id']}"))
         source["feed"] = bool(request.form.get(f"feed_{source['id']}"))
-    settings["calendar_tags"] = bool(request.form.get("calendar_tags"))
+        source["tag"] = bool(request.form.get(f"tag_{source['id']}"))
     save_settings(settings)
     if request.headers.get("X-Autosave"):
         return jsonify(message=_("Settings saved."))
