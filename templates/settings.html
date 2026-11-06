@@ -80,6 +80,12 @@
           </div>
         </div>
         <div class="row">
+          <label for="upcoming_days">{{ _("Upcoming days") }}</label>
+          <select id="upcoming_days" name="upcoming_days">
+            {% for n in range(3, 15) %}<option value="{{ n }}" {{ 'selected' if n == s.upcoming_days }}>{{ n }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
           <label for="tasks_enabled">{{ _("Show tasks on the homepage") }}</label>
           <span class="switch"><input id="tasks_enabled" type="checkbox" name="tasks_enabled" value="1" {{ 'checked' if s.tasks_enabled }}><span></span></span>
         </div>
