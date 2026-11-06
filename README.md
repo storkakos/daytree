@@ -40,11 +40,11 @@ extra account, and also keeps your calendar in sync with Outlook and Google Cale
 
 ### For everyday use
 
-- **Today and the next 7 days:** recurring events included, each with its TimeTree color.
+- **Today and the next days:** 3 to 14 days, 7 by default, recurring events included, each with its TimeTree color.
 - **Tasks:** add, tick off and delete household tasks directly on a tablet. You can hide them if you don't need them.
 - **Reminders:** a notice appears 30 minutes before an event starts.
 - **Weather and greeting:** current weather for your town and a personal greeting. No API key needed.
-- **Weather forecast:** the next 10 hours or 7 days, with day and night icons.
+- **Weather forecast:** the next 10 hours or the upcoming days, with day and night icons.
 - **Waste collection:** upload an ICS file, pick a color per collection and see small bins next to the days, if you
   like one day early as a reminder to put them out.
 - **Works on any screen:** landscape on a TV, portrait on a monitor or tablet, and a scrolling layout on phones.

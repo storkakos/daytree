@@ -143,6 +143,7 @@ def settings_display():
         "background_brightness": _number("background_brightness", 20, 100),
         "font_size": _number("font_size", 70, 150),
         "font_weight": _number("font_weight", 300, 700),
+        "upcoming_days": _number("upcoming_days", 3, 14),
         "tasks_enabled": bool(request.form.get("tasks_enabled")),
         "show_seconds": bool(request.form.get("show_seconds")),
         "greeting_enabled": bool(request.form.get("greeting_enabled")),

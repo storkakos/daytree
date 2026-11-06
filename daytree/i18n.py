@@ -6,7 +6,7 @@ from daytree.core import LANGUAGES, settings
 GERMAN = {
     # Homepage
     "Today": "Heute",
-    "Next 7 days": "Nächste 7 Tage",
+    "Next {count} days": "Nächste {count} Tage",
     "Tasks": "Aufgaben",
     "New task": "Neue Aufgabe",
     "Add": "Hinzufügen",
@@ -187,6 +187,7 @@ GERMAN = {
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
     # Settings: appearance
+    "Upcoming days": "Kommende Tage",
     "Appearance": "Darstellung",
     "Automatic": "Automatisch",
     "Light": "Hell",

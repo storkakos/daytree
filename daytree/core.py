@@ -90,6 +90,7 @@ DEFAULTS = {
     "time_format": "24",        # 24 | 12
     "date_style": "long",       # long | numeric
     "tasks_enabled": True,      # shows the tasks panel on the homepage
+    "upcoming_days": 7,         # days after today in the "Next days" list, 3 to 14
     "show_seconds": False,
     "clock_style": "digital",   # digital | analog
     "clock_size": 100,          # percent

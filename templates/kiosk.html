@@ -184,7 +184,7 @@
       <section id="forecast" class="glass" hidden aria-label="{{ _("Weather forecast") }}"><ul id="forecast-list"></ul></section>
       <section id="today" class="glass"><h2>{{ _("Today") }}<span id="today-bins" class="bins"></span></h2><ul id="today-list"></ul></section>
     </div>
-    <section id="week" class="glass"><h2>{{ _("Next 7 days") }}</h2><ul id="week-list"></ul></section>
+    <section id="week" class="glass"><h2>{{ _("Next {count} days").format(count=s.upcoming_days) }}</h2><ul id="week-list"></ul></section>
     {% if show_tasks %}
     <div id="right" class="column">
     <section id="tasks" class="glass">
@@ -335,7 +335,7 @@
 
   function renderWeek() {
     const todayKey = dayKey(Date.now()), list = $('week-list');
-    fill(list, ...Array.from({ length: 7 }, (_, i) => {
+    fill(list, ...Array.from({ length: CONFIG.upcomingDays }, (_, i) => {
       const day = addDays(todayKey, i + 1), key = day.toISOString().slice(0, 10);
       const row = make('li', 'day'), heading = make('h3', '', weekdayLabel.format(day));
       heading.append(make('small', '', dayLabel.format(day)));
@@ -477,7 +477,8 @@
   // Picks up changes from other devices and app updates, so a kiosk never needs a manual reload
   function useConfig(next) {
     if (!next || JSON.stringify(next) === JSON.stringify(CONFIG)) return;
-    const reload = next.version !== CONFIG.version || next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks;
+    const reload = next.version !== CONFIG.version || next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks
+      || next.upcomingDays !== CONFIG.upcomingDays;
     CONFIG = next;
     if (reload) {
       if ($('panel') && $('panel').classList.contains('open')) location.hash = 'settings';

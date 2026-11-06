@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-06
+
+### Added
+
+- **Upcoming days** in the settings: the homepage lists 3 to 14 days after today instead of always 7. Waste bins
+  and the daily forecast follow it.
+
 ## [0.25.0] - 2026-11-06
 
 One port instead of two. **If you use the Cloudflare tunnel, change it when you update** (see below).
@@ -270,7 +277,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.25.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.26.0...dev
+[0.26.0]: https://github.com/storkakos/daytree/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/storkakos/daytree/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/storkakos/daytree/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
