@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-06
+
+### Added
+
+- Calendars can be renamed under **Calendars**. A TimeTree calendar keeps its new name when the list is loaded
+  again; the feed takes it over with the next sync.
+
 ## [0.28.0] - 2026-11-06
 
 Calendars from other places.
@@ -319,7 +326,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.28.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.29.0...dev
+[0.29.0]: https://github.com/storkakos/daytree/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/storkakos/daytree/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/storkakos/daytree/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/storkakos/daytree/compare/v0.25.0...v0.26.0

@@ -68,8 +68,8 @@
     {% for c in s.sources %}
     <div class="card">
       <div class="row">
-        <label for="color_{{ c.id }}"><strong>{{ c.name }}</strong></label>
-        <input id="color_{{ c.id }}" class="swatch" type="color" name="color_{{ c.id }}" value="{{ c.color or default_color }}">
+        <input id="name_{{ c.id }}" name="name_{{ c.id }}" value="{{ c.name }}" maxlength="60" required aria-label="{{ _('Name') }}" style="font-weight:600;text-align:left">
+        <input id="color_{{ c.id }}" class="swatch" type="color" name="color_{{ c.id }}" value="{{ c.color or default_color }}" aria-label="{{ _('Color') }}">
       </div>
       {% if c.kind != 'timetree' %}
       {% set status = source_states.get(c.id, {}) %}
