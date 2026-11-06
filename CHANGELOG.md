@@ -7,6 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-06
+
+Several TimeTree calendars at once.
+
+### Added
+
+- **Several calendars:** tick any of your TimeTree calendars in the settings. They are synced one after the other;
+  a calendar that fails keeps its last events, and the error names it.
+- Under **Calendars**, per calendar: a color for events without one of their own (TimeTree colors stay), whether
+  the homepage shows it, and whether it is part of the ICS feed.
+- **Show the calendar name at each event:** a small tag on the homepage tells where an event comes from.
+- `/ics/<calendar>?token=…`: each calendar has a feed of its own with its own token, so sharing one reveals no
+  other. **Generate new token** renews all of them.
+- `/api/calendars` lists every calendar with its color.
+
+### Changed
+
+- `/ics` combines every calendar switched on for the feed, with each time zone once and unique event IDs. With one
+  calendar it is the same file as before.
+
+### Security
+
+- The synced calendars are stored encrypted. The unencrypted `timetree.ics` from earlier versions is moved into the
+  encrypted file on start and deleted.
+
 ## [0.26.0] - 2026-11-06
 
 ### Added
@@ -277,7 +302,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.26.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.27.0...dev
+[0.27.0]: https://github.com/storkakos/daytree/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/storkakos/daytree/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/storkakos/daytree/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/storkakos/daytree/compare/v0.24.1...v0.24.2

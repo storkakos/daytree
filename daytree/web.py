@@ -45,7 +45,7 @@ def no_stale_pages(response):
 @app.after_request
 def log_ics_fetch(response):
     # Shows whether calendar services reach the app. The path only: the query string holds the token.
-    if request.path in ("/ics", "/calendar.ics"):
+    if request.path in ("/ics", "/calendar.ics") or request.path.startswith("/ics/"):
         agent = request.headers.get("User-Agent", "-")[:120]
         print(f"ICS fetch: {request.method} {response.status_code} public={auth.is_public()} agent={agent}", flush=True)
     return response
@@ -53,6 +53,7 @@ def log_ics_fetch(response):
 
 def start():
     """Load the last sync state and start the scheduler and the tunnel supervisor."""
+    sync.migrate_legacy()
     sync.load_state()
     threading.Thread(target=sync.scheduler, daemon=True).start()
     threading.Thread(target=tunnel.supervisor, daemon=True).start()

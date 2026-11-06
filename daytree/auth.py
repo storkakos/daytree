@@ -73,7 +73,7 @@ def guard():
 def _public_rules(token):
     """The public side reaches only the areas ticked in the settings; everything else does not exist there."""
     areas, path = settings["public_areas"], request.path
-    if "ics" in areas and path in ("/ics", "/calendar.ics"):
+    if "ics" in areas and (path in ("/ics", "/calendar.ics") or path.startswith("/ics/")):
         return                                   # the ICS token is checked in the route
     if "homepage" in areas and request.method == "GET" and (path in HOMEPAGE_PATHS or path.startswith("/static/")):
         return

@@ -63,8 +63,10 @@ Everything is behind the gear icon, saved immediately and shown live:
 
 ### Under the hood
 
-- **Calendar sync:** imports one TimeTree calendar every 0.5 to 24 hours (default: 3 hours).
-- **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL.
+- **Calendar sync:** imports one or more TimeTree calendars every 0.5 to 24 hours (default: 3 hours).
+- **Several calendars:** each with its own color for events without one, and optionally its name at every event.
+- **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL, to all
+  calendars in one feed or to each calendar on its own.
 - **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
   the API, or any mix.
 - **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
@@ -99,7 +101,7 @@ docker compose up -d --build
 Open `http://<host>:8080`. A setup window guides you through the first start:
 
 1. **Sign in** with your TimeTree e-mail and password.
-2. **Choose a calendar.** The first sync starts as soon as you finish.
+2. **Choose a calendar.** The first sync starts as soon as you finish. More calendars can be added in the settings.
 
 That's it. Move the mouse to the top-right corner and select the gear icon to personalize the homepage. On touch
 screens the icon stays visible.
@@ -140,6 +142,9 @@ Select the gear icon, copy the **ICS URL** from the **Calendar subscription** se
 > Outlook on the web, Microsoft 365 and Google Calendar fetch the feed from their own servers. The URL must be
 > publicly reachable over HTTPS, for example through [Cloudflare](#remote-access-with-cloudflare).
 
+The feed holds every calendar that has **In the ICS feed** switched on under **Calendars**. Each calendar also has
+a link of its own there, with its own token, so you can share one calendar without the others.
+
 The sync interval controls how fresh the feed is. Your calendar app decides how often it fetches it, typically every
 few hours, so changes can take some time to appear there. The homepage updates after every sync.
 
@@ -155,7 +160,7 @@ The tunnel is optional and runs inside the container.
 
 | Area | Reachable through the tunnel |
 |---|---|
-| **ICS feed** | `/ics?token=…` |
+| **ICS feed** | `/ics?token=…` and `/ics/<calendar>?token=…` |
 | **Homepage (read-only)** | The homepage and `/kiosk` without tasks and settings, and the data they show |
 | **API** | `/api/…` with an [API token](#api). Read-only tokens can only read. |
 
@@ -228,7 +233,7 @@ curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `/api/calendars` | `GET` | The synced calendars with `id` and `name` |
+| `/api/calendars` | `GET` | The synced calendars with `id`, `name` and `color` (`null` = none chosen) |
 | `/api/calendars/<id>/events` | `GET` | Events from `?from=` up to `?to=` (ISO dates, at most 366 days). Default: today and the next 7 days |
 | `/api/tasks` | `GET`, `POST` | List tasks, add one with `{"title": …, "done": false}` |
 | `/api/tasks/<id>` | `GET`, `PUT`, `PATCH`, `DELETE` | Read one task, replace it, change `title` or `done`, delete it |
@@ -333,7 +338,7 @@ You can also back up the volumes:
 
 | Volume | Mount | Content |
 |---|---|---|
-| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `waste.enc`, `timetree.ics`, `event_colors.json`, `state.json` |
+| `daytree-data` | `/data` | `settings.enc`, `tasks.enc`, `waste.enc`, `calendars/*.enc`, `state.json` |
 | `daytree-secrets` | `/secrets` | `secret.key` |
 
 Back up the two volumes separately, so that the encrypted settings and their key are not stored together.
@@ -365,7 +370,6 @@ Named volumes let the non-root container user (uid 1000) write. If you switch to
 
 - TimeTree has no official API for this. Daytree uses an unofficial web API through
   [`timetree-exporter`](https://github.com/eoleedi/TimeTree-Exporter), which can break or rate-limit without notice.
-- Only one calendar is supported at a time. Multiple calendars are planned.
 - Only accounts with an e-mail address and password are supported.
 - Calendar apps show a subscribed calendar in one color. Event colors appear only on the Daytree homepage.
 

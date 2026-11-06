@@ -15,7 +15,7 @@ WASTE = ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\nU
 @pytest.fixture
 def state():
     """An installation with credentials, a task and a waste calendar."""
-    core.settings.update(email="owner@example.com", password="TT-SECRET", calendar_code="fam123", greeting_name="Sam",
+    core.settings.update(email="owner@example.com", password="TT-SECRET", sources=[core.new_source("timetree", "Family", "fam123")], greeting_name="Sam",
                          tunnel_token="eyJTUNNELSECRET", weather_lat=54.3)
     core.write_encrypted(core.TASKS_FILE, [{"id": "a1", "title": "Buy milk", "done": False}])
     core.write_encrypted(core.WASTE_FILE, {"ics": WASTE})

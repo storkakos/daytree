@@ -13,7 +13,7 @@ NTFY = "https://ntfy.example.com/daytree-secret-topic"
 
 @pytest.fixture(autouse=True)
 def configured(monkeypatch):
-    core.settings.update(calendar_code="fam123", interval_minutes=180, language="en")
+    core.settings.update(sources=[core.new_source("timetree", "Family", "fam123")], interval_minutes=180, language="en")
     saved = dict(sync.state)
     yield
     sync.state.clear()
@@ -41,7 +41,7 @@ def test_freshness_before_the_first_success(client):
     assert client.get("/api/events").get_json()["stale"] == ""
     sync.state["ok"] = False
     assert client.get("/api/events", headers={"Accept-Language": "en"}).get_json()["stale"] == "Calendar not updated yet"
-    core.settings["calendar_code"] = ""                            # not set up: the setup popup explains enough
+    core.settings["sources"] = []                            # not set up: the setup popup explains enough
     assert client.get("/api/events").get_json()["stale"] == ""
 
 
@@ -103,7 +103,7 @@ def test_json_webhook_and_language(sent):
 def test_nothing_without_address_or_setup(sent):
     core.settings["notify_url"] = ""
     run(False)
-    core.settings.update(notify_url=NTFY, calendar_code="")
+    core.settings.update(notify_url=NTFY, sources=[])
     run(False)
     assert sent == [] and sync.state["alerted"] is False
 

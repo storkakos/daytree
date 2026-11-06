@@ -54,6 +54,8 @@ def view():
     v["has_lock_password"] = bool(settings["lock_hash"])
     v["has_notify_url"] = bool(settings["notify_url"])
     v["interval_label"] = hours(settings["interval_minutes"])
+    v["calendar_name"] = ", ".join(s["name"] for s in settings["sources"] if s["kind"] == "timetree")
+    v["timetree_codes"] = [s["id"] for s in settings["sources"] if s["kind"] == "timetree"]
     return v
 
 
@@ -81,6 +83,7 @@ def display_config():
         "clockSize": settings["clock_size"],
         "showTasks": settings["tasks_enabled"] and not is_public(),
         "upcomingDays": settings["upcoming_days"],
+        "calendarTags": settings["calendar_tags"],
         "greeting": settings["greeting_enabled"],
         "name": "" if is_public() else settings["greeting_name"],
         "weather": settings["weather_enabled"],
