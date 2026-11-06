@@ -6,8 +6,8 @@
 
 **Your family's day at a glance, on any screen.**
 
-A self-hosted home calendar app for TVs, monitors, tablets and phones, powered by your TimeTree calendar.<br>
-With tasks, reminders, a weather forecast, waste collection and beautiful photo backgrounds.
+A self-hosted home calendar app for TVs, monitors, tablets and phones, powered by your TimeTree calendars.<br>
+With school dates, holidays, tasks, reminders, a weather forecast, waste collection and beautiful photo backgrounds.
 
 [![Release](https://img.shields.io/github/v/release/storkakos/daytree?include_prereleases&label=Release)](https://github.com/storkakos/daytree/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -17,6 +17,7 @@ With tasks, reminders, a weather forecast, waste collection and beautiful photo 
 [Features](#features) ·
 [Quick start](#quick-start) ·
 [Wall display](#setting-up-a-wall-display) ·
+[Calendars](#calendars) ·
 [Calendar apps](#subscribing-from-calendar-apps) ·
 [Remote access](#remote-access-with-cloudflare) ·
 [Security](#security)
@@ -41,6 +42,8 @@ extra account, and also keeps your calendar in sync with Outlook and Google Cale
 ### For everyday use
 
 - **Today and the next days:** 3 to 14 days, 7 by default, recurring events included, each with its TimeTree color.
+- **All your calendars in one place:** several TimeTree calendars, plus school holidays, public holidays, a shift plan or
+  the events page of your children's school. A small tag can show which calendar an event comes from.
 - **Tasks:** add, tick off and delete household tasks directly on a tablet. You can hide them if you don't need them.
 - **Reminders:** a notice appears 30 minutes before an event starts.
 - **Weather and greeting:** current weather for your town and a personal greeting. No API key needed.
@@ -53,7 +56,7 @@ extra account, and also keeps your calendar in sync with Outlook and Google Cale
 
 ### Make it yours
 
-Everything is behind the gear icon, saved immediately and shown live:
+Everything is behind the gear icon, sorted into a short menu, saved immediately and shown live:
 
 - **Background:** changing photos or a solid color, with your own interval in minutes, blur and brightness controls.
 - **Clock and date:** digital or analog, 12 or 24 hours, seconds, size, time zone and date style.
@@ -63,15 +66,13 @@ Everything is behind the gear icon, saved immediately and shown live:
 
 ### Under the hood
 
-- **Calendar sync:** imports one or more TimeTree calendars every 0.5 to 24 hours (default: 3 hours).
-- **Several calendars:** each with a name you can change, its own color for events without one, and optionally its name at every event.
-- **More calendars from files or URLs:** school holidays, public holidays or a shift plan, uploaded or fetched on an
-  interval you choose, shown between your TimeTree events. Even school events pages without a subscription work.
+- **Calendar sync:** imports your TimeTree calendars every 0.5 to 24 hours (default: 3 hours), and other calendars on
+  their own interval. See [Calendars](#calendars).
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL, to all
   calendars in one feed or to each calendar on its own.
 - **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
   the API, or any mix.
-- **Privacy:** credentials, tokens, tasks and the waste calendar are stored encrypted. No database, no cloud service of ours.
+- **Privacy:** credentials, tokens, tasks and all calendars are stored encrypted. No database, no cloud service of ours.
 - **Settings padlock:** an optional password for the settings, while the homepage stays open.
 - **Monitoring:** a `/ping` endpoint for tools such as Uptime Kuma, a note on the homepage when its events are out
   of date, and a message to ntfy or a webhook when syncing stops working.
@@ -103,10 +104,11 @@ docker compose up -d --build
 Open `http://<host>:8080`. A setup window guides you through the first start:
 
 1. **Sign in** with your TimeTree e-mail and password.
-2. **Choose a calendar.** The first sync starts as soon as you finish. More calendars can be added in the settings.
+2. **Choose a calendar.** The first sync starts as soon as you finish.
 
 That's it. Move the mouse to the top-right corner and select the gear icon to personalize the homepage. On touch
-screens the icon stays visible.
+screens the icon stays visible. The settings open on a menu: **TimeTree**, **Calendars**, **Display**, **Weather**,
+**Background**, **Waste collection**, **Notifications**, **Cloudflare tunnel**, **Security** and **Backup**.
 
 ## Setting up a wall display
 
@@ -131,9 +133,34 @@ The app opens the normal homepage with the settings; `/kiosk` is not installable
 
 There is no offline mode: without a connection the app shows that Daytree is unreachable instead of old events.
 
+## Calendars
+
+Under **TimeTree** in the settings, tick every TimeTree calendar you want. They are synced one after the other; if one
+fails, it keeps its last events and the error names it.
+
+Under **Calendars → Add a calendar** you can add calendars from other places:
+
+| Source | Example | Updated |
+|---|---|---|
+| **Calendar address** | `https://…/holidays.ics` or `webcal://…` | On the interval you choose, 0.5 to 24 hours |
+| **School events page** | A school website with a monthly events calendar but no subscription | Like an address |
+| **File** | An `.ics` file you upload | When you upload it again |
+
+Paste the address and Daytree recognizes by itself whether it is a calendar file or an events page. Events pages work
+when the website shows a Contao month view, as many school websites do; Daytree reads the current month and the next
+three and keeps each event's link. The address is stored encrypted and never shown in full, since it can contain a
+private key. A calendar that cannot be fetched keeps its last events, and the settings show why.
+
+Each calendar has its own settings under **Calendars**:
+
+- **Name**, used on the homepage and in the feed.
+- **Color** for events that bring none. TimeTree colors always stay.
+- **On the homepage** and **In the ICS feed**, to show it only where you want it.
+- **Show the calendar name at each event** adds a small tag on the homepage.
+
 ## Subscribing from calendar apps
 
-Select the gear icon, copy the **ICS URL** from the **Calendar subscription** section, and add it to your app:
+Under **Calendars**, copy the **ICS URL** from **Calendar subscription** and add it to your app:
 
 | App | Where to add the URL |
 |---|---|
@@ -144,14 +171,8 @@ Select the gear icon, copy the **ICS URL** from the **Calendar subscription** se
 > Outlook on the web, Microsoft 365 and Google Calendar fetch the feed from their own servers. The URL must be
 > publicly reachable over HTTPS, for example through [Cloudflare](#remote-access-with-cloudflare).
 
-The feed holds every calendar that has **In the ICS feed** switched on under **Calendars**. Each calendar also has
-a link of its own there, with its own token, so you can share one calendar without the others.
-
-Under **Add a calendar** you can add calendars from other places: an address such as `https://…` or `webcal://…`, which
-Daytree fetches on the interval you set, or an `.ics` file. The address can also be a school's events page without a
-calendar subscription, if the website shows a Contao month view, as many school websites do. Daytree recognizes which
-kind it is by itself and reads the current month and the next three. The address is stored encrypted and never shown in full,
-since it can contain a private key. A calendar that cannot be fetched keeps its last events, and the settings show why.
+The feed holds every calendar that has **In the ICS feed** switched on. Each calendar also has a link of its own, with
+its own token, so you can share one calendar without the others. **Generate new token** renews all of them.
 
 The sync interval controls how fresh the feed is. Your calendar app decides how often it fetches it, typically every
 few hours, so changes can take some time to appear there. The homepage updates after every sync.
@@ -163,7 +184,7 @@ The tunnel is optional and runs inside the container.
 1. In Cloudflare Zero Trust, go to *Networks → Tunnels → Create a tunnel → Cloudflared* and copy the **token**.
    You can also copy the whole install command, and the app extracts the token.
 2. Add a **Public Hostname** to the tunnel with the service `HTTP` and `localhost:8080`.
-3. In the settings, under **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
+3. In the settings, open **Cloudflare tunnel**, paste the token, turn on *Tunnel enabled*, and enter the public
    hostname. Then tick what the tunnel may reach and save.
 
 | Area | Reachable through the tunnel |
@@ -211,7 +232,8 @@ error, because it can include account details; the settings show it. **Send test
 ```mermaid
 flowchart LR
     TT[TimeTree] -->|scheduled sync| APP[Daytree<br>container]
-    APP --- DATA[(Encrypted settings,<br>tasks and ICS file)]
+    OTHER[Calendar addresses,<br>school pages] -->|own interval| APP
+    APP --- DATA[(Encrypted settings,<br>tasks and calendars)]
     APP -->|port 8080| LAN[Homepage and settings<br>home network]
     APP -->|port 8080, Cloudflare headers| CF[Cloudflare tunnel]
     CF --> CAL[Outlook, Google Calendar,<br>uptime monitors]
@@ -223,21 +245,21 @@ in Cloudflare.
 
 Daytree calls a few outside services: TimeTree for your calendar, the addresses of calendars you add,
 [Open-Meteo](https://open-meteo.com/) for weather if you turn it on, and [Lorem Picsum](https://picsum.photos/) for
-photos. Displays load the photos directly from Lorem
-Picsum, and fonts other than the system font from Google Fonts.
+photos. Displays load the photos directly from Lorem Picsum, and fonts other than the system font from Google Fonts.
 
 ## API
 
 Apps and scripts can use the JSON API under `/api/`. On your home network, reading needs no token. Writing needs an
 API token, unless it comes from the homepage itself.
 
-1. In the settings, under **API tokens**, enter a name, choose *Read only* or *Read and write*, and select
+1. In the settings, under **Security → API tokens**, enter a name, choose *Read only* or *Read and write*, and select
    **Create token**.
 2. Copy the token. It is shown only once, and Daytree keeps only a hash of it.
 3. Send it in the `Authorization` header:
 
 ```bash
-curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json"      -d '{"title": "Buy milk"}' http://<host>:8080/api/tasks
+curl -H "Authorization: Bearer dt_…" -H "Content-Type: application/json" \
+     -d '{"title": "Buy milk"}' http://<host>:8080/api/tasks
 ```
 
 | Route | Methods | Purpose |
@@ -265,7 +287,7 @@ TZ=Europe/London
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | Host port of the app. |
-| `DAYTREE_VERSION` | `latest` | Version of the prebuilt image, such as `0.23.0` or `0.23`. |
+| `DAYTREE_VERSION` | `latest` | Version of the prebuilt image, such as `0.31.0` or `0.31`. |
 | `SETTINGS_LOCK` | `false` | `true` puts the settings behind a [padlock](#settings-padlock). The password is set in the browser. |
 | `HTTPS_URL` | – | Address of your [reverse proxy](#https-on-your-home-network), such as `https://daytree.example.com`. |
 | `TZ` | `Europe/Berlin` | Default time zone. A time zone chosen in the settings overrides it. An invalid name falls back to UTC. |
@@ -280,11 +302,11 @@ affected by a changed host port.
 
 ## Security
 
-- All settings, including the TimeTree credentials, ICS token and tunnel token, are stored in `/data/settings.enc`,
-  encrypted with Fernet (AES-128-CBC with HMAC-SHA256). Tasks are encrypted the same way in `/data/tasks.enc`.
+- All settings, including the TimeTree credentials, calendar addresses, ICS tokens and tunnel token, are stored in
+  `/data/settings.enc`, encrypted with Fernet (AES-128-CBC with HMAC-SHA256). Tasks, the waste calendar and every
+  calendar are encrypted the same way. The feeds are decrypted only when a calendar app fetches them.
 - The key is generated on first start and stored in `/secrets/secret.key`, on a **separate volume**.
 - Secrets are never shown in the UI, never written to logs, and reach child processes only through their environment.
-- The ICS file contains your event titles and is stored unencrypted, because it has to be served.
 - Anyone with both volumes, or with shell access to the running container, can decrypt the settings. The TimeTree
   password has to be recoverable to log in.
 - If the key is lost, the settings have to be entered again.
@@ -330,17 +352,16 @@ Anyone on your home network can open the settings. To protect them with a passwo
   wrong passwords, unlocking is blocked for a minute.
 - The homepage, `/kiosk`, tasks and the ICS feed stay usable without the password.
 
-Forgot the password? Set `SETTINGS_LOCK=false`, run `docker compose up -d`, set a new password under **Padlock** in
-the settings, then turn the padlock on again.
+Forgot the password? Set `SETTINGS_LOCK=false`, run `docker compose up -d`, set a new password under
+**Security → Padlock** in the settings, then turn the padlock on again.
 
 ## Backups and upgrades
 
 The easiest backup is in the settings, under **Backup**: enter a password and select **Download backup**. The file
 holds the settings with all credentials, the tasks, the waste calendar and uploaded calendar files, encrypted with
-that password. It does not
-need the key file, so it also moves Daytree to another server. To restore, choose the file, enter its password and
-select **Restore**. Daytree checks the whole file first and changes nothing if the password is wrong or the file is
-damaged. The calendar itself is synced again from TimeTree.
+that password. It does not need the key file, so it also moves Daytree to another server. To restore, choose the
+file, enter its password and select **Restore**. Daytree checks the whole file first and changes nothing if the
+password is wrong or the file is damaged. TimeTree calendars and calendars from addresses are fetched again.
 
 Keep the password somewhere safe: without it the backup cannot be opened.
 
@@ -367,7 +388,12 @@ git pull
 docker compose up -d --build
 ```
 
-`DAYTREE_VERSION` in `.env` pins the prebuilt image to a version such as `0.23.0`, or to `0.23` for its bug fixes.
+`DAYTREE_VERSION` in `.env` pins the prebuilt image to a version such as `0.31.0`, or to `0.31` for its bug fixes.
+
+> [!IMPORTANT]
+> **Upgrading from 0.24 or older with the Cloudflare tunnel:** port 8081 is gone. In Cloudflare Zero Trust, change the
+> tunnel's public hostname from `localhost:8081` to `localhost:8080` (or `daytree:8081` to `daytree:8080`). The ICS
+> address is now `/ics`; existing subscriptions to `/calendar.ics` keep working.
 
 Installations from before the Daytree rename used volumes named `timetree-ics_timetree-data` and
 `timetree-ics_timetree-secrets`. Stop the old container and copy both volumes to `daytree_daytree-data` and
@@ -382,6 +408,7 @@ Named volumes let the non-root container user (uid 1000) write. If you switch to
   [`timetree-exporter`](https://github.com/eoleedi/TimeTree-Exporter), which can break or rate-limit without notice.
 - Only accounts with an e-mail address and password are supported.
 - Calendar apps show a subscribed calendar in one color. Event colors appear only on the Daytree homepage.
+- Events pages are read from Contao month views only. Other websites need a calendar address or file.
 
 ## Development
 
@@ -395,7 +422,7 @@ docker exec -i daytree python - < tests/port_check.py
 | Test | Requirements | Covers |
 |---|---|---|
 | `pytest` | Python 3.15; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, shared area and token. TimeTree, `cloudflared` and the web services are mocked. |
-| `tests/port_check.py` | Running container, nothing or only the ICS feed shared | Internal and public port detection against real gunicorn. |
+| `tests/port_check.py` | Running container, nothing shared through the tunnel | Requests with and without Cloudflare headers against real gunicorn, and that port 8081 is closed. |
 
 `port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
 verification status.
