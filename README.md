@@ -156,7 +156,7 @@ Each calendar has its own settings under **Calendars**:
 - **Name**, used on the homepage and in the feed.
 - **Color** for events that bring none. TimeTree colors always stay.
 - **On the homepage** and **In the ICS feed**, to show it only where you want it.
-- **Show the calendar name at each event** adds a small tag on the homepage.
+- **Show the name at its events** adds a small tag with the calendar's name to its events on the homepage.
 
 ## Subscribing from calendar apps
 
