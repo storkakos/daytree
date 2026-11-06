@@ -54,7 +54,7 @@ The user wrote in German; these are faithful English translations. Treat every i
 |---|---|
 | **No built-in dashboard login.** | The user answered "No" to adding a dashboard password. Compensation: public dashboard mode is read-only, settings/sync are never reachable from the public side, and the UI recommends a Cloudflare Access policy. The one exception the owner asked for is the settings padlock (`SETTINGS_LOCK`): a password for the settings only, with no login page and no user accounts. **Do not add other app-level auth unless the user asks.** |
 | Everything in **English**. | "Everything must be in English." German exists only as the app's second language, through the translations in `daytree/i18n.py`. |
-| Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8081`. |
+| Tunnel is controlled **from the dashboard** (token pasted in Settings), `cloudflared` runs inside the same container. | Mirrors how Uptime Kuma's tunnel feature works. Users who prefer an external `cloudflared` (e.g. the one in Uptime Kuma) can point its public hostname to `http://daytree:8080`. |
 | The shared areas (**ICS feed, homepage read-only, API with token**, any combination, none by default) are **enforced by the app**, not only by Cloudflare config. | The tunnel token is remotely managed, so path rules live in Cloudflare; the app must not rely on them. |
 | One container, Flask, **no database**. | Keep it slim. State = one encrypted settings file + one ICS file + a small status JSON. |
 
@@ -63,8 +63,8 @@ The user wrote in German; these are faithful English translations. Treat every i
 ## 3. Architecture
 
 ```
-Browser / Outlook ──► :8080 (internal)  ┐
-Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 threads) ─► Flask app (daytree/)
+Browser / Outlook ──► :8080 (internal) ┐
+Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 threads) ─► Flask app (daytree/)
                                          ┘        │
                                                   ├─ scheduler thread  ─► `timetree-exporter` subprocess ─► /data/timetree.ics
                                                   ├─ tunnel supervisor ─► `cloudflared tunnel run` subprocess (TUNNEL_TOKEN via env)
@@ -81,14 +81,14 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `daytree/sync.py` | TimeTree login and export, ICS repair, the scheduler, and reading events from the ICS file. |
 | `daytree/tunnel.py` | The `cloudflared` supervisor. |
 | `daytree/display.py` | The homepage, `/kiosk` and their data: config, events, weather, background photos, waste bins. |
-| `daytree/api.py` | Tasks API, `/api/status`, `/ping` and `/calendar.ics`. |
+| `daytree/api.py` | Tasks API, `/api/status`, `/ping` and `/ics` (`/calendar.ics` redirects there). |
 | `daytree/admin.py` | The settings pages and their forms. |
 | `daytree/web.py` | Builds the Flask app from the areas above, registers the access guard and starts the threads. |
 | `daytree/i18n.py` | German translations (English strings are the keys) and the language of a request. |
 | `daytree/__init__.py` | `VERSION`. |
 | `templates/kiosk.html` | Homepage and `/kiosk`: agenda, week, tasks, reminders, weather forecast, waste collection and setup popup. Vanilla JS, responsive for landscape, portrait and phones. |
 | `templates/base.html`, `settings.html`, `locked.html` | Settings UI with sync status and the padlock page (server-rendered). Light/dark: class `light`/`dark` on `<html>` from the appearance setting, or no class to follow `prefers-color-scheme`; the dark colors are written once in a Jinja `set`. The homepage itself stays dark glass; only its setup popup and settings panel follow the setting. |
-| `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
+| `Dockerfile` | `python:3.15-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service with both `image:` (prebuilt, `docker compose pull`) and `build: .` (from source, `--build`; the test box uses this); **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.in` | Direct dependencies: `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |
@@ -121,7 +121,7 @@ task and the waste calendar, and only then replaces anything; old settings forma
 
 ### HTTP routes
 
-| Route | Internal (8080) | Public side (8081 or request with `Cf-Ray` / `Cf-Connecting-Ip`) |
+| Route | Internal (no Cloudflare headers) | Public side (request with `Cf-Ray` / `Cf-Connecting-Ip`; one port, 8080) |
 |---|---|---|
 | `GET /` kiosk homepage with first-time setup popup | yes | area `homepage` (read-only view: no settings gear, no tasks, no setup popup) |
 | `GET /kiosk` read-only homepage for fixed screens: tasks can be read, no settings gear, no setup popup | yes | area `homepage` (without tasks) |
@@ -132,7 +132,8 @@ task and the waste calendar, and only then replaces anything; old settings forma
 | `POST /sync` | yes, padlock applies | never |
 | `GET /settings`, `POST /settings/login`, `/settings/save`, `/settings/display`, `/settings/waste`, `/settings/tunnel`, `/settings/lock`, `/settings/password`, `/settings/tokens`, `/settings/tokens/revoke` | yes, padlock applies | never |
 | `POST /settings/unlock` (opens the padlock, or sets its first password) | yes | never |
-| `GET /calendar.ics?token=…` | yes (token required) | area `ics` (token required) |
+| `GET /ics?token=…` | yes (token required) | area `ics` (token required) |
+| `GET /calendar.ics?…` (old address) | 301 to `/ics` with the same query | area `ics`: 301 to `/ics` |
 | `GET /ping` (health check for uptime monitors, returns only `pong`) | yes | always, whatever is shared |
 | anything else on the public side | – | 404; `/api/` in area `api` without a token: 401 |
 
@@ -183,7 +184,7 @@ first-time setup on the homepage works.
   - Version 1.0.0 writes all-day dates without `VALUE=DATE` and a VTIMEZONE that only covers the stored
     start dates. `fix_ics()` in `daytree/sync.py` repairs both after every export and also adds `CALSCALE`, `METHOD`
     and `X-WR-CALNAME` and removes `COLOR`. Keep the header changes when upstream fixes the defects.
-- Every `/calendar.ics` request is logged with method, status and user agent, never with the query string.
+- Every `/ics` and `/calendar.ics` request is logged with method, status and user agent, never with the query string.
 - `cloudflared` official image: binary at `/usr/local/bin/cloudflared`, built with `CGO_ENABLED=0`
   (static → runs on Alpine); reads `TUNNEL_TOKEN` from the environment; logs the line
   `Registered tunnel connection` when a connection is established (used for the "connected" status).
@@ -258,8 +259,8 @@ dependencies give. After a change, update section 4 of this file with what you a
 - [ ] First start creates `/secrets/secret.key` (600) and `/data/settings.enc`; `grep` for the TimeTree password, ICS token and tunnel token in `/data` and `/secrets` finds nothing in plaintext.
 - [ ] Settings → sign-in lists the real calendars; selecting one and saving works; **Sync now** produces `/data/timetree.ics`.
 - [ ] Changing the interval in the UI changes the next-sync time without a restart.
-- [ ] `GET /calendar.ics` → 403 without/with wrong token, 200 with the correct one.
-- [ ] Area `ics` only: via the public hostname only `/calendar.ics?token=…` and `/ping` work; `/`, `/settings`, `/api/status` → 404.
+- [ ] `GET /ics` → 403 without/with wrong token, 200 with the correct one; `/calendar.ics` → 301 to `/ics`.
+- [ ] Area `ics` only: via the public hostname only `/ics?token=…` and `/ping` work; `/`, `/settings`, `/api/status` → 404.
 - [ ] Area `homepage`: `/` works read-only (no token, no Settings link, no Sync button); `/settings`, `/api/status` and all POSTs → 404.
 - [ ] Area `api`: `/api/tasks` works with a token and gives 401 without one; `/` and `/settings` → 404.
 - [ ] Nothing shared: everything on the public side except `/ping` → 404.
@@ -283,7 +284,8 @@ dependencies give. After a change, update section 4 of this file with what you a
 
 - Never introduce plaintext secret storage, never log secrets, never put secrets in argv, env files,
   compose files, templates or test fixtures. Redact tokens in any error output you add.
-- Do not publish port 8081 in `docker-compose.yml`.
+- There is one port, 8080. Public means "carries Cloudflare headers"; never treat a port, the `Host` header or an
+  IP address as public or internal.
 - Do not add a login/auth system, a database, or a JS framework without the owner's explicit request.
 - Every new route goes into the access table in `tests/test_access.py`. Routes are closed by default, and opening one is the exception.
 - Do not change what an area shares without updating the UI text, README, the access table and this file.

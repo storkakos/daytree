@@ -7,6 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-06
+
+One port instead of two. **If you use the Cloudflare tunnel, change it when you update** (see below).
+
+### Changed
+
+- **Breaking:** port 8081 is gone. The tunnel now points to port 8080, like the home network, and the app
+  recognizes requests through Cloudflare by the headers Cloudflare adds. The shared areas apply to them as before.
+  In Cloudflare Zero Trust, under *Networks → Tunnels → your tunnel → Public Hostname*, change the service from
+  `localhost:8081` to `localhost:8080` (or from `daytree:8081` to `daytree:8080` for an external `cloudflared`).
+  Until then, the public hostname answers with an error from Cloudflare; nothing becomes reachable that was not.
+- The ICS feed is at `/ics`. `/calendar.ics` sends calendars there with their token, so subscriptions keep working.
+
+### Removed
+
+- The `PUBLIC_PORT` setting.
+
+## [0.24.2] - 2026-11-06
+
+### Changed
+
+- Daytree runs on Python 3.15 instead of 3.12.
+
 ## [0.24.1] - 2026-11-02
 
 ### Fixed
@@ -247,7 +270,9 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.1...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.25.0...dev
+[0.25.0]: https://github.com/storkakos/daytree/compare/v0.24.2...v0.25.0
+[0.24.2]: https://github.com/storkakos/daytree/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/storkakos/daytree/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0

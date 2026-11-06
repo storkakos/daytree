@@ -1,6 +1,6 @@
-"""Checks against the real gunicorn process that port 8081 is public and port 8080 is internal.
+"""Checks against the real gunicorn process that requests through Cloudflare are public and others are internal.
 
-Needs a running container with public mode "off" (the default):
+Needs a running container with nothing shared through the tunnel (the default):
 
     docker exec -i daytree python - < tests/port_check.py
 
@@ -15,10 +15,18 @@ def status(port, path="/", headers=None):
     return conn.getresponse().status
 
 
+def listening(port):
+    try:
+        status(port)
+        return True
+    except OSError:
+        return False
+
+
 assert status(8080) == 200
-assert status(8081) == 404
-assert status(8081, headers={"Host": "calendar.example.com"}) == 404
-assert status(8081, headers={"Host": "calendar.example.com:8080"}) == 404      # Host header must not matter
-assert status(8081, "/settings", {"Host": "localhost:8080"}) == 404
-assert status(8080, headers={"Cf-Ray": "abc"}) == 404                          # mis-pointed tunnel
+assert status(8080, headers={"Cf-Ray": "abc"}) == 404
+assert status(8080, headers={"Cf-Connecting-Ip": "203.0.113.9"}) == 404
+assert status(8080, "/settings", {"Cf-Ray": "abc", "Host": "localhost:8080"}) == 404   # Host header must not matter
+assert status(8080, "/ping", {"Cf-Ray": "abc"}) == 200
+assert not listening(8081)                                                          # the old public port is gone
 print("ALL OK")
