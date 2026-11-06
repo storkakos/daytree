@@ -12,9 +12,9 @@ import requests
 from cryptography.fernet import InvalidToken
 from icalendar import Calendar
 
-from daytree import VERSION, notify
-from daytree.core import (CALENDAR_DIR, DATA, LEGACY_COLORS, LEGACY_ICS, STATE_FILE, calendar_file, read_encrypted, settings,
-                          timetree_sources, write_encrypted)
+from daytree import VERSION, notify, pages
+from daytree.core import (CALENDAR_DIR, DATA, LEGACY_COLORS, LEGACY_ICS, STATE_FILE, calendar_file, effective_timezone,
+                          read_encrypted, settings, timetree_sources, write_encrypted)
 
 MAX_SOURCE_BYTES = 5 * 1024 * 1024
 sources_lock = threading.Lock()  # one URL fetch at a time
@@ -212,10 +212,21 @@ def store_source(source, raw):
 
 
 def fetch_url(source):
-    """Downloads a URL calendar and stores it. Errors never contain the URL, which can hold a private token."""
+    """Downloads a URL calendar and stores it. Recognizes an ICS file or an events web page (see pages.py) by its
+    content and returns which one it was: "ics" or "page"."""
     url = source["url"]
     if url.lower().startswith("webcal://"):
         url = "https://" + url[len("webcal://"):]
+    raw = download(url)
+    if raw.decode("utf-8-sig", "replace").lstrip()[:15].upper() == "BEGIN:VCALENDAR":
+        store_source(source, raw)
+        return "ics"
+    store_source(source, pages.to_ics(pages.read(url, raw, download), effective_timezone()))
+    return "page"
+
+
+def download(url):
+    """The body at url, at most MAX_SOURCE_BYTES. Errors never contain the URL, which can hold a private token."""
     try:
         with requests.get(url, timeout=30, stream=True, headers={"User-Agent": f"Daytree/{VERSION}"}) as response:
             if response.status_code != 200:
@@ -229,7 +240,7 @@ def fetch_url(source):
         raise ValueError("The server could not be reached.") from None
     if len(raw) > MAX_SOURCE_BYTES:
         raise ValueError("The file is too large.")
-    store_source(source, raw)
+    return raw
 
 
 def refresh(source):
@@ -238,8 +249,7 @@ def refresh(source):
         status = state.setdefault("sources", {}).setdefault(source["id"], {})
         status["last_run"] = time.time()
         try:
-            fetch_url(source)
-            status.update(ok=True, message="OK", last_success=_now())
+            status.update(ok=True, message="OK", last_success=_now(), format=fetch_url(source))
         except ValueError as e:
             status.update(ok=False, message=str(e))
         _save_state()

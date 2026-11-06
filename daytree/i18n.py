@@ -203,10 +203,11 @@ GERMAN = {
     "For example School holidays": "Zum Beispiel Schulferien",
     "Update every": "Aktualisieren alle",
     "Or a calendar file (.ics)": "Oder eine Kalenderdatei (.ics)",
-    "School holidays, public holidays or a shift plan: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.":
-        "Schulferien, Feiertage oder ein Schichtplan: von einer Adresse, die Daytree regelmäßig abruft, oder aus einer Datei. Die Adresse wird verschlüsselt gespeichert, weil sie einen privaten Schlüssel enthalten kann.",
+    "School holidays, public holidays, a shift plan or a school's events page: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.":
+        "Schulferien, Feiertage, ein Schichtplan oder die Terminseite einer Schule: von einer Adresse, die Daytree regelmäßig abruft, oder aus einer Datei. Die Adresse wird verschlüsselt gespeichert, weil sie einen privaten Schlüssel enthalten kann.",
     "Source": "Quelle",
     "Uploaded file": "Hochgeladene Datei",
+    "Events page": "Terminseite",
     "Update now": "Jetzt aktualisieren",
     "Remove this calendar?": "Diesen Kalender entfernen?",
     "Calendar added.": "Kalender hinzugefügt.",
@@ -218,6 +219,8 @@ GERMAN = {
     "Enter an address that starts with https://, http:// or webcal://.": "Gib eine Adresse ein, die mit https://, http:// oder webcal:// beginnt.",
     "The server did not answer in time.": "Der Server hat nicht rechtzeitig geantwortet.",
     "The server could not be reached.": "Der Server war nicht erreichbar.",
+    "The address is neither a calendar file nor an events page Daytree can read.":
+        "Die Adresse ist weder eine Kalenderdatei noch eine Terminseite, die Daytree lesen kann.",
     # Settings: appearance
     "Upcoming days": "Kommende Tage",
     "Appearance": "Darstellung",

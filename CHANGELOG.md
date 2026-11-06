@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-06
+
+### Added
+
+- **School events pages:** an address under **Add a calendar** can also be a web page with a Contao calendar month
+  view, as many school websites have instead of a subscription. Daytree recognizes by the content whether an address
+  is an ICS file or such a page, reads the current month and the next three, and keeps each event's link. The
+  settings show which kind was found.
+
 ## [0.29.0] - 2026-11-06
 
 ### Added
@@ -326,7 +335,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.29.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.30.0...dev
+[0.30.0]: https://github.com/storkakos/daytree/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/storkakos/daytree/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/storkakos/daytree/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/storkakos/daytree/compare/v0.26.0...v0.27.0

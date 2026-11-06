@@ -66,7 +66,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 - **Calendar sync:** imports one or more TimeTree calendars every 0.5 to 24 hours (default: 3 hours).
 - **Several calendars:** each with a name you can change, its own color for events without one, and optionally its name at every event.
 - **More calendars from files or URLs:** school holidays, public holidays or a shift plan, uploaded or fetched on an
-  interval you choose, shown between your TimeTree events.
+  interval you choose, shown between your TimeTree events. Even school events pages without a subscription work.
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL, to all
   calendars in one feed or to each calendar on its own.
 - **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
@@ -148,7 +148,9 @@ The feed holds every calendar that has **In the ICS feed** switched on under **C
 a link of its own there, with its own token, so you can share one calendar without the others.
 
 Under **Add a calendar** you can add calendars from other places: an address such as `https://…` or `webcal://…`, which
-Daytree fetches on the interval you set, or an `.ics` file. The address is stored encrypted and never shown in full,
+Daytree fetches on the interval you set, or an `.ics` file. The address can also be a school's events page without a
+calendar subscription, if the website shows a Contao month view, as many school websites do. Daytree recognizes which
+kind it is by itself and reads the current month and the next three. The address is stored encrypted and never shown in full,
 since it can contain a private key. A calendar that cannot be fetched keeps its last events, and the settings show why.
 
 The sync interval controls how fresh the feed is. Your calendar app decides how often it fetches it, typically every

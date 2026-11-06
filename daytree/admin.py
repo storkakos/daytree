@@ -196,7 +196,7 @@ def settings_sources():
                 raise ValueError("Enter an address that starts with https://, http:// or webcal://.")
             source = new_source("url", name or parts.hostname, url=url,
                                 interval_minutes=clamp(request.form.get("interval") or URL_MINUTES))
-            sync.fetch_url(source)
+            found = sync.fetch_url(source)
         else:
             raise ValueError("Choose a file or enter an address.")
     except ValueError as e:
@@ -207,7 +207,7 @@ def settings_sources():
     save_settings(settings)
     if source["kind"] == "url":
         sync.state.setdefault("sources", {})[source["id"]] = {"last_run": sync.time.time(), "ok": True, "message": "OK",
-                                                               "last_success": sync._now()}
+                                                               "last_success": sync._now(), "format": found}
     flash(_("Calendar added."), "ok")
     return redirect(url_for("admin.settings_page"))
 

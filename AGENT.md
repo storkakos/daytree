@@ -78,7 +78,8 @@ Cloudflare tunnel ──► :8080 (Cf-* hdrs) ├─► gunicorn (1 worker, 4 th
 | `app.py` | Entry point for gunicorn (`app:app`). Builds the app and starts the background threads. |
 | `daytree/core.py` | Data paths, the encryption key, encrypted files, the settings and the time zone. No Flask. |
 | `daytree/auth.py` | Access control: internal and public side, shared areas, CSRF check, API and ICS tokens, padlock. |
-| `daytree/sync.py` | TimeTree login and export, ICS repair, the scheduler, and reading events from the ICS file. |
+| `daytree/sync.py` | TimeTree login and export, calendars from files and URLs, ICS repair, the scheduler, and reading events from the stored calendars. |
+| `daytree/pages.py` | Events from a Contao calendar month view (school websites without a subscription): event links whose title carries the date, following the next-month link on the same server for `MONTHS`. `sync.fetch_url()` uses it when an address is not an ICS file. |
 | `daytree/tunnel.py` | The `cloudflared` supervisor. |
 | `daytree/display.py` | The homepage, `/kiosk` and their data: config, events, weather, background photos, waste bins. |
 | `daytree/api.py` | Tasks API, `/api/status`, `/ping`, `/ics` (all calendars switched on for the feed, combined) and `/ics/<id>` (one calendar, its own token); `/calendar.ics` redirects to `/ics`. |
