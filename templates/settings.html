@@ -525,13 +525,7 @@
 <script>
   document.querySelector('form[action$="/settings/tunnel"]').id = 'tunnel-form';
   const notify = message => { if (top !== self) parent.postMessage(message, location.origin); };
-  if (top !== self) {
-    document.documentElement.classList.add('embedded');
-    document.querySelector('.bar a').addEventListener('click', event => {
-      event.preventDefault();
-      if (!location.hash.slice(1)) notify('close-settings');
-    });
-  }
+  if (top !== self) document.documentElement.classList.add('embedded');
   // A new token is shown once: reloading must not create another one
   if (document.getElementById('new-token')) history.replaceState(null, '', '{{ url_for('admin.settings_page') }}#tokens');
   // A saved form reloads this page, so the homepage around it hears about the change here
@@ -541,14 +535,19 @@
   }
 
   // Two steps: the menu, then one group. The group is the address's #part, so back and reloads keep it.
-  const menuTitles = Object.fromEntries([...document.querySelectorAll('#menu a')].map(a => [a.hash.slice(1), a.querySelector('span').textContent]));
+  // Kept to what Chromium 56 understands, since wall displays open the settings in the homepage panel
+  const menuTitles = {};
+  document.querySelectorAll('#menu a').forEach(a => { menuTitles[a.hash.slice(1)] = a.querySelector('span').textContent; });
   const barLink = document.querySelector('.bar a'), barTitle = document.querySelector('.bar strong');
   const homeLink = barLink.innerHTML, settingsTitle = barTitle.textContent;
   let current = '';
   function show() {
     let id = location.hash.slice(1);
     const target = id && !menuTitles[id] ? document.getElementById(id) : null;
-    if (target) id = target.closest('[data-group]')?.dataset.group || '';     // a part of a group, such as #tokens
+    if (target) {                                                       // a part of a group, such as #tokens
+      const group = target.closest('[data-group]');
+      id = group ? group.dataset.group : '';
+    }
     current = menuTitles[id] ? id : '';
     document.getElementById('menu').hidden = !!current;
     document.querySelectorAll('[data-group]').forEach(node => { node.hidden = node.dataset.group !== (current || 'menu'); });
@@ -556,11 +555,17 @@
     barTitle.textContent = current ? menuTitles[current] : settingsTitle;
     if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   }
+  // One handler for the bar link: in a group it leads back to the menu; on the menu it leaves the settings,
+  // which inside the homepage panel means closing the panel
   barLink.addEventListener('click', event => {
-    if (!current) return;
-    event.preventDefault();
-    location.hash = '';
-  }, true);
+    if (current) {
+      event.preventDefault();
+      location.hash = '';
+    } else if (top !== self) {
+      event.preventDefault();
+      notify('close-settings');
+    }
+  });
   // After a save the server sends the page again; the #part of the form's address brings the same group back
   document.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => {
     if (current) f.action = f.action.split('#')[0] + '#' + current;
