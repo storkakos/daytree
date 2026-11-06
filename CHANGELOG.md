@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-06
+
+### Changed
+
+- The settings open on a short menu: TimeTree, Calendars, Display, Weather, Background, Waste collection,
+  Notifications, Cloudflare tunnel, Security and Backup. Each opens its own page, and after saving the same page
+  stays open. The browser's back button and the homepage's settings panel work with it.
+
 ## [0.30.0] - 2026-11-06
 
 ### Added
@@ -335,7 +343,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.30.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.31.0...dev
+[0.31.0]: https://github.com/storkakos/daytree/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/storkakos/daytree/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/storkakos/daytree/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/storkakos/daytree/compare/v0.27.0...v0.28.0

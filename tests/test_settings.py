@@ -120,3 +120,11 @@ def test_every_ui_string_has_a_german_translation():
         used |= set(re.findall(r'_\("((?:[^"\\]|\\.)+)"\)', f.read_text(encoding="utf-8")))
     missing = (used | set(display.display_config_strings()) | set(display.WEATHER_TEXT)) - set(i18n.GERMAN)
     assert not missing, missing
+
+
+def test_menu_lists_every_group(client):
+    """The settings open on a menu; every group of the page has an entry, and each entry has a group."""
+    page = client.get("/settings", headers={"Accept-Language": "en"}).data.decode()
+    entries = set(re.findall(r'<a class="row nav" href="#([a-z]+)"', page))
+    groups = set(re.findall(r'data-group="([a-z]+)"', page)) - {"menu"}
+    assert entries == groups and {"sync", "calendars", "display", "security", "backup"} <= entries
