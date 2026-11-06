@@ -107,6 +107,10 @@
         <span class="switch"><input id="homepage_{{ c.id }}" type="checkbox" name="homepage_{{ c.id }}" value="1" {{ 'checked' if c.homepage }}><span></span></span>
       </div>
       <div class="row">
+        <label for="tag_{{ c.id }}">{{ _("Show the name at its events") }}</label>
+        <span class="switch"><input id="tag_{{ c.id }}" type="checkbox" name="tag_{{ c.id }}" value="1" {{ 'checked' if c.tag }}><span></span></span>
+      </div>
+      <div class="row">
         <label for="feed_{{ c.id }}">{{ _("In the ICS feed") }}</label>
         <span class="switch"><input id="feed_{{ c.id }}" type="checkbox" name="feed_{{ c.id }}" value="1" {{ 'checked' if c.feed }}><span></span></span>
       </div>
@@ -129,12 +133,6 @@
       {% endif %}
     </div>
     {% endfor %}
-    <div class="card">
-      <div class="row">
-        <label for="calendar_tags">{{ _("Show the calendar name at each event") }}</label>
-        <span class="switch"><input id="calendar_tags" type="checkbox" name="calendar_tags" value="1" {{ 'checked' if s.calendar_tags }}><span></span></span>
-      </div>
-    </div>
     <p>{{ _("Events keep the color they have in TimeTree. The color here is for events without one. The ICS feed holds every calendar switched on for it; each calendar also has a link of its own.") }}</p>
   </form>
   {% endif %}

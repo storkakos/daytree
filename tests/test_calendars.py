@@ -136,15 +136,24 @@ def test_choose_calendars_in_the_settings(client, two):
 
 def test_calendar_options(client, two):
     family, work = two
-    data = {"color_fam123": "#8e8e93", "color_work9": "#AABBCC", "homepage_fam123": "1", "feed_work9": "1", "calendar_tags": "1"}
+    data = {"color_fam123": "#8e8e93", "color_work9": "#AABBCC", "homepage_fam123": "1", "feed_work9": "1", "tag_fam123": "1"}
     r = client.post("/settings/calendars", data=data, headers={**ORIGIN, "X-Autosave": "1"})
     assert r.status_code == 200 and r.get_json()["message"]
     family, work = core.settings["sources"]
     assert family["color"] == "" and work["color"] == "#aabbcc"           # the picker's default is not a choice
     assert family["homepage"] and not family["feed"] and not work["homepage"] and work["feed"]
-    assert core.settings["calendar_tags"] and client.get("/api/config").get_json()["calendarTags"] is True
+    assert family["tag"] and not work["tag"]
+    events = {e["title"]: e for e in client.get("/api/events").get_json()["events"]}
+    assert events["Dentist"]["tag"] is True and "Standup" not in events                # Work is off the homepage
     client.post("/settings/calendars", data={"color_work9": "nope"}, headers=ORIGIN)
-    assert core.settings["sources"][1]["color"] == "#aabbcc" and core.settings["calendar_tags"] is False
+    assert core.settings["sources"][1]["color"] == "#aabbcc" and core.settings["sources"][0]["tag"] is False
+
+
+def test_old_tag_switch_becomes_one_per_calendar():
+    s, dirty = core.normalize({"calendar_tags": True, "sources": [{"id": "a", "kind": "timetree", "name": "A"}]})
+    assert dirty and "calendar_tags" not in s and s["sources"][0]["tag"] is True
+    s, _ = core.normalize({"sources": [{"id": "a", "kind": "timetree", "name": "A"}]})
+    assert s["sources"][0]["tag"] is False
 
 
 def test_rename(client, two):

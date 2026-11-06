@@ -194,7 +194,7 @@ GERMAN = {
     "In the ICS feed": "Im ICS-Feed",
     "This calendar alone (home network)": "Nur dieser Kalender (Heimnetz)",
     "This calendar alone (public)": "Nur dieser Kalender (öffentlich)",
-    "Show the calendar name at each event": "Kalendername an jedem Termin zeigen",
+    "Show the name at its events": "Name an den Terminen zeigen",
     "Events keep the color they have in TimeTree. The color here is for events without one. The ICS feed holds every calendar switched on for it; each calendar also has a link of its own.":
         "Termine behalten ihre Farbe aus TimeTree. Die Farbe hier gilt für Termine ohne eigene. Der ICS-Feed enthält jeden Kalender, der dafür eingeschaltet ist; jeder Kalender hat außerdem einen eigenen Link.",
     "This calendar appears on the homepage and in the ICS feed. More can be added in the settings later.":

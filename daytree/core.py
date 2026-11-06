@@ -75,7 +75,6 @@ DEFAULTS = {
     "password": "",
     "calendars": [],            # [{"name": ..., "code": ...}] TimeTree offers, from the last login
     "sources": [],              # the calendars Daytree syncs, shows and serves; see new_source()
-    "calendar_tags": False,     # shows the calendar name at the end of each event on the homepage
     "interval_minutes": 180,
     "token": "",                # token embedded in the ICS URL
     "public_areas": [],         # subset of PUBLIC_AREAS for requests through the tunnel; empty = only /ping
@@ -161,6 +160,7 @@ def normalize(stored):
     if not s["token"]:
         s["token"] = secrets.token_urlsafe(24)
         dirty = True
+    tags = s.pop("calendar_tags", False)   # up to 0.32: one switch for every calendar's name tag
     code, name = s.pop("calendar_code", ""), s.pop("calendar_name", "")
     if code and not s["sources"]:   # up to 0.26: one TimeTree calendar
         s["sources"] = [new_source("timetree", name or code, code)]
@@ -177,6 +177,9 @@ def normalize(stored):
     dirty = dirty or len(checked) != len(s["sources"])
     s["sources"] = checked
     for source in s["sources"]:
+        if tags:
+            source["tag"] = True
+            dirty = True
         if source["kind"] == "url":
             source["interval_minutes"] = clamp(source.get("interval_minutes", URL_MINUTES))
         for key, value in SOURCE_DEFAULTS.items():
@@ -187,7 +190,7 @@ def normalize(stored):
     return s, dirty
 
 
-SOURCE_DEFAULTS = {"color": "", "feed": True, "homepage": True}
+SOURCE_DEFAULTS = {"color": "", "feed": True, "homepage": True, "tag": False}
 SOURCE_KINDS = ("timetree", "file", "url")
 SOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 URL_MINUTES = 360               # how often a calendar from a URL is fetched unless chosen otherwise
@@ -195,7 +198,8 @@ URL_MINUTES = 360               # how often a calendar from a URL is fetched unl
 
 def new_source(kind, name, source_id=None, **extra):
     """A calendar Daytree syncs. TimeTree calendars keep their code as id, so API addresses stay the same.
-    color: for events that bring none ("" = the homepage default); feed: part of /ics; homepage: shown there.
+    color: for events that bring none ("" = the homepage default); feed: part of /ics; homepage: shown there;
+    tag: the homepage shows the calendar's name at each of its events.
     token: for its own feed at /ics/<id>, so sharing one calendar reveals no other.
     kind "file" is an uploaded calendar; kind "url" also has url (may hold a private token) and interval_minutes."""
     return {"id": source_id or secrets.token_hex(4), "kind": kind, "name": name, "token": secrets.token_urlsafe(24),

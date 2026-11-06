@@ -276,7 +276,7 @@
     return dot;
   };
   // The calendar an event comes from, when the settings ask for it
-  const tag = event => CONFIG.calendarTags && event.calendar ? [make('span', 'tag', event.calendar)] : [];
+  const tag = event => event.tag && event.calendar ? [make('span', 'tag', event.calendar)] : [];
   const dayKey = value => {
     const [month, day, year] = keyFormat.format(value).split('/');
     return `${year}-${month}-${day}`;
