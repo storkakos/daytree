@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-11-07
+
+### Fixed
+
+- In the settings panel of the homepage, **‹ Settings** in a group goes back to the menu instead of closing the
+  panel.
+- The settings menu works again in older browsers on wall displays (from Chromium 56).
+
 ## [0.31.0] - 2026-11-06
 
 ### Changed
@@ -343,7 +351,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.31.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.31.1...dev
+[0.31.1]: https://github.com/storkakos/daytree/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/storkakos/daytree/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/storkakos/daytree/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/storkakos/daytree/compare/v0.28.0...v0.29.0

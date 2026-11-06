@@ -128,3 +128,10 @@ def test_menu_lists_every_group(client):
     entries = set(re.findall(r'<a class="row nav" href="#([a-z]+)"', page))
     groups = set(re.findall(r'data-group="([a-z]+)"', page)) - {"menu"}
     assert entries == groups and {"sync", "calendars", "display", "security", "backup"} <= entries
+
+
+def test_settings_script_suits_old_wall_browsers(client):
+    """The homepage panel opens the settings on wall displays with Chromium 56, where ?. and fromEntries break the script."""
+    page = client.get("/settings").data.decode()
+    script = page[page.index("<script>"):]
+    assert "?." not in script and "fromEntries" not in script and "??" not in script
