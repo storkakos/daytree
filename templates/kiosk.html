@@ -98,6 +98,8 @@
   .day .item > * + * { margin-left:.5rem; }
   .day .item time { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .day .item .title { min-width:0; word-wrap:break-word; overflow-wrap:anywhere; }
+  .tag { flex:none; align-self:center; margin-left:.5rem; padding:.05em .5em; border-radius:999px; font-size:.7em; font-weight:500;
+         color:var(--muted); background:rgba(255,255,255,.12); white-space:nowrap; }
   .task { display:flex; align-items:center; min-height:44px; }
   .task button { margin-left:.6rem; }
   .task label { flex:1; min-width:0; display:flex; align-items:center; word-wrap:break-word; overflow-wrap:anywhere; cursor:pointer; }
@@ -184,7 +186,7 @@
       <section id="forecast" class="glass" hidden aria-label="{{ _("Weather forecast") }}"><ul id="forecast-list"></ul></section>
       <section id="today" class="glass"><h2>{{ _("Today") }}<span id="today-bins" class="bins"></span></h2><ul id="today-list"></ul></section>
     </div>
-    <section id="week" class="glass"><h2>{{ _("Next 7 days") }}</h2><ul id="week-list"></ul></section>
+    <section id="week" class="glass"><h2>{{ _("Next {count} days").format(count=s.upcoming_days) }}</h2><ul id="week-list"></ul></section>
     {% if show_tasks %}
     <div id="right" class="column">
     <section id="tasks" class="glass">
@@ -216,7 +218,7 @@
       {% if s.has_password and s.calendars %}
       <div class="step">{{ _("Step 2 of 2") }}</div>
       <h1 id="setup-title">{{ _("Choose your calendar") }}</h1>
-      <p>{{ _("This calendar appears on the homepage and in the ICS feed.") }}</p>
+      <p>{{ _("This calendar appears on the homepage and in the ICS feed. More can be added in the settings later.") }}</p>
       <form method="post" action="{{ url_for('admin.settings_save') }}">
         <input type="hidden" name="setup" value="1">
         <input type="hidden" name="sync_now" value="1">
@@ -273,6 +275,8 @@
     if (event.color) dot.style.backgroundColor = event.color;
     return dot;
   };
+  // The calendar an event comes from, when the settings ask for it
+  const tag = event => CONFIG.calendarTags && event.calendar ? [make('span', 'tag', event.calendar)] : [];
   const dayKey = value => {
     const [month, day, year] = keyFormat.format(value).split('/');
     return `${year}-${month}-${day}`;
@@ -327,7 +331,7 @@
     fill(list, ...today.map(e => {
       const ended = !e.all_day && e.end_ts * 1000 < now;
       const row = make('li', 'event' + (ended ? ' past' : '') + (e === next ? ' next' : ''));
-      row.append(make('time', '', e.all_day ? text('All day') : timeOf(e.start_ts)), bullet(e), make('strong', '', e.title));
+      row.append(make('time', '', e.all_day ? text('All day') : timeOf(e.start_ts)), bullet(e), make('strong', '', e.title), ...tag(e));
       return row;
     }));
     if (!today.length) list.append(make('li', 'empty', text('Nothing planned today')));
@@ -335,7 +339,7 @@
 
   function renderWeek() {
     const todayKey = dayKey(Date.now()), list = $('week-list');
-    fill(list, ...Array.from({ length: 7 }, (_, i) => {
+    fill(list, ...Array.from({ length: CONFIG.upcomingDays }, (_, i) => {
       const day = addDays(todayKey, i + 1), key = day.toISOString().slice(0, 10);
       const row = make('li', 'day'), heading = make('h3', '', weekdayLabel.format(day));
       heading.append(make('small', '', dayLabel.format(day)));
@@ -345,7 +349,7 @@
         const item = make('div', 'item');
         item.append(bullet(e));
         if (!e.all_day) item.append(make('time', '', timeOf(e.start_ts)));
-        item.append(make('span', 'title', e.title));
+        item.append(make('span', 'title', e.title), ...tag(e));
         items.append(item);
       });
       if (!entries.length) items.append(make('div', 'empty', '–'));
@@ -477,7 +481,8 @@
   // Picks up changes from other devices and app updates, so a kiosk never needs a manual reload
   function useConfig(next) {
     if (!next || JSON.stringify(next) === JSON.stringify(CONFIG)) return;
-    const reload = next.version !== CONFIG.version || next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks;
+    const reload = next.version !== CONFIG.version || next.language !== CONFIG.language || next.showTasks !== CONFIG.showTasks
+      || next.upcomingDays !== CONFIG.upcomingDays;
     CONFIG = next;
     if (reload) {
       if ($('panel') && $('panel').classList.contains('open')) location.hash = 'settings';

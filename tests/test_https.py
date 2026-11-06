@@ -46,7 +46,7 @@ def test_everything_works_through_the_proxy(client, https_on):
 
 def test_unlock_cookie_is_secure_through_the_proxy(client, https_on, monkeypatch):
     monkeypatch.setattr(auth, "SETTINGS_LOCK", True)
-    core.settings.update(calendar_code="fam123", lock_hash=auth.hash_password("correct horse"))
+    core.settings.update(sources=[core.new_source("timetree", "Family", "fam123")], lock_hash=auth.hash_password("correct horse"))
     r = client.post("/settings/unlock", data={"password": "correct horse"}, headers={**PROXIED, "Origin": "https://localhost"})
     assert "Secure" in r.headers["Set-Cookie"] and "HttpOnly" in r.headers["Set-Cookie"]
 

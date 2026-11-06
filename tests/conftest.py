@@ -6,6 +6,7 @@ and an old plaintext settings file (to migrate) are prepared here before anythin
 import copy
 import json
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -33,7 +34,7 @@ os.environ["PATH"] = f"{BIN}{os.pathsep}{os.environ['PATH']}"
 LEGACY = {"email": "a@b.de", "password": "PLAINPW-123", "token": "legacytoken-ABC"}
 (DATA / "settings.json").write_text(json.dumps(LEGACY))
 
-from daytree import auth, core, display  # noqa: E402
+from daytree import auth, core, display, sync  # noqa: E402
 from daytree.web import app  # noqa: E402
 
 ORIGIN = {"Origin": "http://localhost"}        # same-site header that passes the CSRF check
@@ -45,6 +46,15 @@ def client():
     return app.test_client()
 
 
+def use_calendar(ics=None, code="fam123", name="Family", colors=None, **options):
+    """Adds a selected TimeTree calendar and, with ics, stores its data as a sync would."""
+    source = {**core.new_source("timetree", name, code), **options}
+    core.settings["sources"] = [s for s in core.settings["sources"] if s["id"] != code] + [source]
+    if ics is not None:
+        sync.save_calendar(code, ics, colors)
+    return source
+
+
 @pytest.fixture(autouse=True)
 def restore_settings():
     """Every test starts from the settings after the migration, and nothing it changes leaks into the next one."""
@@ -54,6 +64,7 @@ def restore_settings():
     core.settings.update(saved)
     core.save_settings(core.settings)
     core.apply_timezone()
+    shutil.rmtree(core.CALENDAR_DIR, ignore_errors=True)
     display.backgrounds.clear()
     display.weather.clear()
     auth._sessions.clear()

@@ -33,14 +33,14 @@ def test_login_lists_active_calendars(client):
     put, get = timetree()
     with put, get:
         r = client.post("/settings/login", data={"email": "a@b.de", "password": ""}, headers=ORIGIN, follow_redirects=True)
-    assert b"2 calendars found" in r.data and b"old1" not in r.data and b"Unnamed (work9)" in r.data
+    assert b"2 calendars found" in r.data and b"old1" not in r.data and b"<small>work9</small>" in r.data
     assert b"PLAINPW-123" not in core.SETTINGS_FILE.read_bytes()
 
 
 def test_calendar_and_interval(client):
     core.settings["calendars"] = [{"name": "Unnamed", "code": "work9"}]
     client.post("/settings/save", data={"calendar_code": "work9", "interval": "2"}, headers=ORIGIN)
-    assert core.settings["calendar_code"] == "work9" and core.settings["interval_minutes"] == 30    # clamped to minimum
+    assert [s["id"] for s in core.settings["sources"]] == ["work9"] and core.settings["interval_minutes"] == 30   # clamped
     assert core.DEFAULTS["interval_minutes"] == 180
     for sent, stored in (("100", 90), ("1440", 1440), ("9999", 1440)):
         client.post("/settings/save", data={"interval": sent}, headers=ORIGIN)
@@ -58,19 +58,19 @@ def test_new_ics_token(client):
 
 
 def test_first_time_setup(client):
-    core.settings.update(calendar_code="fam123", calendar_name="Family")
+    core.settings.update(sources=[core.new_source("timetree", "Family", "fam123")])
     page = client.get("/").data
     assert b'id="setup"' not in page and b'id="gear"' in page and b'href="/settings"' in page
-    core.settings.update(email="", password="", calendar_code="", calendar_name="", calendars=[])
+    core.settings.update(email="", password="", sources=[], calendars=[])
     page = client.get("/", headers={"Accept-Language": "en"}).data
     assert b'id="setup"' in page and b"Step 1 of 2" in page and b'id="gear"' not in page
     put, get = timetree()
     with put, get:
         r = client.post("/settings/login", data={"email": "a@b.de", "password": "PLAINPW-123", "setup": "1"}, headers=ORIGIN)
-    assert r.status_code == 302 and r.location.endswith("/") and core.settings["calendar_code"] == ""
+    assert r.status_code == 302 and r.location.endswith("/") and core.settings["sources"] == []
     assert b"Step 2 of 2" in client.get("/", headers={"Accept-Language": "en"}).data
     r = client.post("/settings/save", data={"calendar_code": "fam123", "interval": "180", "setup": "1"}, headers=ORIGIN)
-    assert r.location.endswith("/") and core.settings["calendar_code"] == "fam123"
+    assert r.location.endswith("/") and [s["id"] for s in core.settings["sources"]] == ["fam123"]
     assert b'id="setup"' not in client.get("/").data
 
 
@@ -120,3 +120,11 @@ def test_every_ui_string_has_a_german_translation():
         used |= set(re.findall(r'_\("((?:[^"\\]|\\.)+)"\)', f.read_text(encoding="utf-8")))
     missing = (used | set(display.display_config_strings()) | set(display.WEATHER_TEXT)) - set(i18n.GERMAN)
     assert not missing, missing
+
+
+def test_menu_lists_every_group(client):
+    """The settings open on a menu; every group of the page has an entry, and each entry has a group."""
+    page = client.get("/settings", headers={"Accept-Language": "en"}).data.decode()
+    entries = set(re.findall(r'<a class="row nav" href="#([a-z]+)"', page))
+    groups = set(re.findall(r'data-group="([a-z]+)"', page)) - {"menu"}
+    assert entries == groups and {"sync", "calendars", "display", "security", "backup"} <= entries

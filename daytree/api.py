@@ -1,13 +1,15 @@
 """The JSON API for calendars, tasks and status, the health check and the ICS feed."""
+import hmac
 import secrets
 import threading
 from datetime import date, timedelta
 
 from flask import Blueprint, Response, abort, jsonify, redirect, request
+from icalendar import Calendar
 
 from daytree import sync, tunnel
 from daytree.auth import token_ok
-from daytree.core import ICS_FILE, TASKS_FILE, read_encrypted, settings, write_encrypted
+from daytree.core import TASKS_FILE, read_encrypted, settings, write_encrypted
 
 bp = Blueprint("api", __name__)
 
@@ -17,10 +19,8 @@ MAX_DAYS = 366                      # longest range /api/calendars/<id>/events a
 
 # ---------------------------------------------------------------- calendars
 def calendars():
-    """The calendars Daytree syncs. One for now; multiple calendars are #27."""
-    if not settings["calendar_code"]:
-        return []
-    return [{"id": settings["calendar_code"], "name": settings["calendar_name"]}]
+    """The calendars Daytree syncs. TimeTree calendars keep their TimeTree code as id."""
+    return [{"id": s["id"], "name": s["name"], "color": s["color"] or None} for s in settings["sources"]]
 
 
 @bp.get("/api/calendars")
@@ -47,7 +47,7 @@ def api_calendar_events(calendar_id):
     last = _day("to", first + timedelta(days=8))
     if not first < last <= first + timedelta(days=MAX_DAYS):
         abort(400)
-    return jsonify(events=sync.as_json(sync.occurrences(first, last)))
+    return jsonify(events=sync.as_json(sync.occurrences(first, last, [calendar_id])))
 
 
 # ---------------------------------------------------------------- tasks
@@ -167,14 +167,60 @@ def ping():
     return Response("pong\n", mimetype="text/plain", headers={"Cache-Control": "no-store"})
 
 
+def combine(sources, name):
+    """One ICS file from several calendars: each time zone once, and event IDs that stay unique."""
+    stored = [data for data in (sync.load_calendar(s["id"]) for s in sources) if data]
+    if len(stored) == 1:
+        return stored[0]["ics"].encode()                 # one calendar is served exactly as it was synced
+    if not stored:
+        return None
+    combined = Calendar()
+    for key, value in (("VERSION", "2.0"), ("PRODID", "-//Daytree//EN"), ("CALSCALE", "GREGORIAN"),
+                       ("METHOD", "PUBLISH"), ("X-WR-CALNAME", name)):
+        combined[key] = value
+    zones, events, uids = {}, [], set()
+    for source, data in ((s, sync.load_calendar(s["id"])) for s in sources):
+        try:
+            cal = Calendar.from_ical(data["ics"]) if data else None
+        except ValueError:
+            cal = None
+        for component in cal.subcomponents if cal else []:
+            if component.name == "VTIMEZONE":
+                zones.setdefault(str(component.get("TZID")), component)
+            elif component.name == "VEVENT":
+                uid = str(component.get("UID", ""))
+                if uid in uids:
+                    component["UID"] = uid = f"{uid}-{source['id']}"
+                uids.add(uid)
+                events.append(component)
+    for component in [*zones.values(), *events]:
+        combined.add_component(component)
+    return combined.to_ical()
+
+
+def _ics(raw, filename):
+    if raw is None:
+        abort(404)
+    return Response(raw, mimetype="text/calendar", headers={"Content-Disposition": f"inline; filename={filename}"})
+
+
 @bp.route("/ics")
 def calendar_ics():
+    """Every calendar that is switched on for the feed, in one file."""
     if not token_ok(request.args.get("token")):
         abort(403)
-    if not ICS_FILE.exists():
-        abort(404)
-    return Response(ICS_FILE.read_bytes(), mimetype="text/calendar",
-                    headers={"Content-Disposition": "inline; filename=timetree.ics"})
+    sources = [s for s in settings["sources"] if s["feed"]]
+    name = sources[0]["name"] if len(sources) == 1 else "Daytree"
+    return _ics(combine(sources, name), "daytree.ics")
+
+
+@bp.route("/ics/<source_id>")
+def calendar_ics_one(source_id):
+    """One calendar with its own token. An unknown calendar answers like a wrong token, so ids stay hidden."""
+    source = next((s for s in settings["sources"] if s["id"] == source_id), None)
+    if not source or not hmac.compare_digest(request.args.get("token") or "", source["token"]):
+        abort(403)
+    return _ics(combine([source], source["name"]), f"{source_id}.ics")
 
 
 @bp.route("/calendar.ics")

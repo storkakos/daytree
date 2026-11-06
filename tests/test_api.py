@@ -3,7 +3,7 @@ import re
 from datetime import date, timedelta
 
 import pytest
-from conftest import ORIGIN
+from conftest import ORIGIN, use_calendar
 
 from daytree import core, sync
 
@@ -16,20 +16,17 @@ def day(days):
 
 @pytest.fixture
 def calendar():
-    core.settings.update(calendar_code="fam123", calendar_name="Family")
-    core.ICS_FILE.write_bytes("\r\n".join([
+    use_calendar("\r\n".join([
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//test//EN",
         "BEGIN:VEVENT", "UID:1", "SUMMARY:Soon", f"DTSTART;VALUE=DATE:{day(2)}", f"DTEND;VALUE=DATE:{day(3)}", "END:VEVENT",
         "BEGIN:VEVENT", "UID:2", "SUMMARY:Later", f"DTSTART;VALUE=DATE:{day(40)}", f"DTEND;VALUE=DATE:{day(41)}", "END:VEVENT",
         "END:VCALENDAR", "",
-    ]).encode())
-    yield
-    core.ICS_FILE.unlink(missing_ok=True)
+    ]))
 
 
 def test_calendars(client, calendar):
-    assert client.get("/api/calendars").get_json() == {"calendars": [{"id": "fam123", "name": "Family"}]}
-    core.settings["calendar_code"] = ""
+    assert client.get("/api/calendars").get_json() == {"calendars": [{"id": "fam123", "name": "Family", "color": None}]}
+    core.settings["sources"] = []
     assert client.get("/api/calendars").get_json() == {"calendars": []}
 
 

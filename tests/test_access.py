@@ -3,7 +3,7 @@
 The tables are the reference for what is public. Change them only together with the access rules in auth.py.
 """
 import pytest
-from conftest import ORIGIN, PUBLIC
+from conftest import ORIGIN, PUBLIC, use_calendar
 
 from daytree import auth, core
 from daytree.web import app
@@ -56,6 +56,10 @@ TABLE = {
     ("GET", f"/ics?token={BAD}"):                (403, 403, 404, 403, 404, 404),
     ("GET", "/ics"):                             (403, 403, 404, 403, 404, 404),
     ("GET", f"/calendar.ics?token={GOOD}"):      (301, 301, 404, 301, 404, 404),
+    ("GET", f"/ics/fam123?token={GOOD}"):        (200, 200, 404, 200, 404, 404),
+    ("GET", f"/ics/fam123?token={BAD}"):         (403, 403, 404, 403, 404, 404),
+    ("POST", "/settings/calendars"):             (OK, 403, 404, 404, 404, 404),
+    ("POST", "/settings/sources"):               (OK, 403, 404, 404, 404, 404),
 }
 SIDES = {
     "internal": {},
@@ -63,7 +67,7 @@ SIDES = {
     "Cloudflare header": {"headers": {"Cf-Ray": "abc"}},
     "Cloudflare client IP": {"headers": {"Cf-Connecting-Ip": "203.0.113.9"}},
 }
-REAL = {"api.ping", "api.calendar_ics", "api.old_calendar_ics", "static"}
+REAL = {"api.ping", "api.calendar_ics", "api.calendar_ics_one", "api.old_calendar_ics", "static"}
 
 
 @pytest.fixture
@@ -72,10 +76,9 @@ def stubbed(monkeypatch):
     for endpoint in list(app.view_functions):
         if endpoint not in REAL:
             monkeypatch.setitem(app.view_functions, endpoint, lambda **_: ("", 204))
-    core.settings.update(token=GOOD, calendar_code="fam123", lock_hash=LOCK_HASH)
-    core.ICS_FILE.write_bytes(b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
-    yield app.test_client()
-    core.ICS_FILE.unlink(missing_ok=True)
+    core.settings.update(token=GOOD, lock_hash=LOCK_HASH)
+    use_calendar("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n", token=GOOD)
+    return app.test_client()
 
 
 def cases():
@@ -202,7 +205,8 @@ def test_static_files_belong_to_the_homepage(stubbed, areas, expected):
 
 def test_every_route_is_in_the_tables():
     rules = {(m, r.rule) for r in app.url_map.iter_rules() if r.endpoint != "static" for m in r.methods - {"HEAD", "OPTIONS"}}
-    names = {"/api/tasks/1": "/api/tasks/<task_id>", "/api/calendars/fam123/": "/api/calendars/<calendar_id>/"}
+    names = {"/api/tasks/1": "/api/tasks/<task_id>", "/api/calendars/fam123/": "/api/calendars/<calendar_id>/",
+             "/ics/fam123": "/ics/<source_id>"}
     listed = set()
     for method, path in TABLE:
         path = path.split("?")[0]
@@ -253,7 +257,7 @@ def test_public_homepage_reveals_nothing(client):
     assert core.settings["token"].encode() not in page and b"/settings" not in page and b"Sync now" not in page
     assert b"/api/tasks" not in page and b'id="gear"' not in page and b'id="tasks"' not in page and b"Private Name" not in page
     assert client.get("/api/config", environ_overrides=PUBLIC).get_json()["name"] == ""
-    core.settings["calendar_code"] = ""
+    core.settings["sources"] = []
     assert b'id="setup"' not in client.get("/", environ_overrides=PUBLIC).data       # the setup is never shown publicly
     assert core.settings["token"].encode() in client.get("/settings").data            # the internal view shows the URL
 

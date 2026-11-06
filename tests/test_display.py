@@ -124,6 +124,18 @@ def test_weather_place_and_current(client):
     assert core.settings["weather_city"] == ""
 
 
+def test_upcoming_days(client, upload):
+    assert core.settings["upcoming_days"] == 7 and client.get("/api/config").get_json()["upcomingDays"] == 7
+    assert "Next 7 days" in client.get("/", headers={"Accept-Language": "en"}).data.decode()
+    upload(WASTE_ICS.encode())
+    for value, stored in (("3", 3), ("14", 14), ("99", 14), ("1", 3)):
+        client.post("/settings/display", data={"tasks_enabled": "1", "upcoming_days": value}, headers=ORIGIN)
+        assert core.settings["upcoming_days"] == stored
+        assert len(client.get("/api/waste").get_json()["days"]) == stored + 1
+    assert "Nächste 3 Tage" in client.get("/", headers={"Accept-Language": "de"}).data.decode()
+    assert client.post("/settings/display", data={"tasks_enabled": "1", "upcoming_days": "x"}, headers=ORIGIN).status_code == 400
+
+
 def test_weather_forecast(client):
     core.settings.update(weather_enabled=True, weather_lat=54.3, weather_lon=9.7)
     times = [f"2026-11-{d:02d}T{h:02d}:00" for d in range(1, 9) for h in range(24)]

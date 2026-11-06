@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-  <section class="group">
+  {% set menu = [
+    ('sync', 'TimeTree', _("Last sync failed") if state.ok is false else ''),
+    ('calendars', _("Calendars"), s.sources|length), ('display', _("Display"), ''), ('weather', _("Weather"), ''),
+    ('background', _("Background"), ''), ('waste', _("Waste collection"), ''), ('notify', _("Notifications"), ''),
+    ('tunnel', _("Cloudflare tunnel"), _(tunnel.status|capitalize)), ('security', _("Security"), ''), ('backup', _("Backup"), ''),
+  ] %}
+  <nav id="menu" class="group" aria-label="{{ _('Settings') }}">
+    <div class="card">
+      {% for id, label, hint in menu %}
+      <a class="row nav" href="#{{ id }}"><span>{% if id == 'sync' %}<span class="dot {{ 'ok' if state.ok else ('err' if state.ok is false else 'na') }}"></span>{% endif %}{{ label }}</span><span class="value">{{ hint }}</span><span class="chev" aria-hidden="true">›</span></a>
+      {% endfor %}
+    </div>
+  </nav>
+  <section class="group" data-group="sync">
     <h2>{{ _("Status") }}</h2>
     <div class="card">
       <div class="row">
@@ -17,7 +30,7 @@
     </div>
   </section>
 
-  <form method="post" action="{{ url_for('admin.settings_login') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_login') }}" class="group" data-group="sync">
     <h2>{{ _("TimeTree account") }}</h2>
     <div class="card">
       <div class="row"><label for="email">{{ _("E-mail") }}</label><input id="email" name="email" type="email" value="{{ s.email }}" autocomplete="username" required></div>
@@ -27,21 +40,24 @@
     <p>{{ _("A TimeTree account with an e-mail address and password is required. Logins through Google or Apple only have no password.") }}</p>
   </form>
 
-  <form method="post" action="{{ url_for('admin.settings_save') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_save') }}" class="group" data-group="sync">
     <h2>{{ _("Calendar and sync") }}</h2>
     <div class="card">
+      {% if s.calendars %}
+      <input type="hidden" name="calendars_form" value="1">
+      {% for c in s.calendars %}
+      <label class="row option">
+        <input type="checkbox" name="calendar" value="{{ c.code }}" {{ 'checked' if c.code in s.timetree_codes }}>
+        <div><strong>{{ c.name }}</strong><small>{{ c.code }}</small></div>
+        <span class="tick">✓</span>
+      </label>
+      {% endfor %}
+      {% else %}
       <div class="row">
-        <label for="calendar_code">{{ _("Calendar") }}</label>
-        {% if s.calendars %}
-        <select id="calendar_code" name="calendar_code">
-          {% for c in s.calendars %}
-            <option value="{{ c.code }}" {{ 'selected' if c.code == s.calendar_code }}>{{ c.name }} ({{ c.code }})</option>
-          {% endfor %}
-        </select>
-        {% else %}
+        <span class="label">{{ _("Calendar") }}</span>
         <span class="value">{{ _("Sign in first, then the calendar list appears here.") }}</span>
-        {% endif %}
       </div>
+      {% endif %}
       <div class="row">
         <label for="interval">{{ _("Sync interval") }}</label>
         <select id="interval" name="interval">
@@ -59,8 +75,90 @@
     <p>{{ _("Very short intervals may get you rate-limited by TimeTree.") }}</p>
   </form>
 
+  {% if s.sources %}
+  <form method="post" action="{{ url_for('admin.settings_calendars') }}" class="group" data-group="calendars" id="calendars-form">
+    <h2>{{ _("Calendars") }}</h2>
+    {% for c in s.sources %}
+    <div class="card">
+      <div class="row">
+        <input id="name_{{ c.id }}" name="name_{{ c.id }}" value="{{ c.name }}" maxlength="60" required aria-label="{{ _('Name') }}" style="font-weight:600;text-align:left">
+        <input id="color_{{ c.id }}" class="swatch" type="color" name="color_{{ c.id }}" value="{{ c.color or default_color }}" aria-label="{{ _('Color') }}">
+      </div>
+      {% if c.kind != 'timetree' %}
+      {% set status = source_states.get(c.id, {}) %}
+      <div class="row">
+        <span class="label">{{ _("Source") }}</span>
+        <span class="value">{{ c.host if c.kind == 'url' else _("Uploaded file") }}{% if status.format == 'page' %} · {{ _("Events page") }}{% elif status.format == 'ics' %} · ICS{% endif %}{% if status.ok is false %} · {{ _(status.message) }}{% elif status.last_success %} · {{ status.last_success[:16].replace('T', ' ') }} UTC{% endif %}</span>
+      </div>
+      {% if c.kind == 'url' %}
+      <div class="row">
+        <label for="interval_{{ c.id }}">{{ _("Update every") }}</label>
+        <select id="interval_{{ c.id }}" name="interval_{{ c.id }}">
+          {% for minutes, label in intervals %}<option value="{{ minutes }}" {{ 'selected' if minutes == c.interval_minutes }}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% endif %}
+      <div class="row">
+        <label for="homepage_{{ c.id }}">{{ _("On the homepage") }}</label>
+        <span class="switch"><input id="homepage_{{ c.id }}" type="checkbox" name="homepage_{{ c.id }}" value="1" {{ 'checked' if c.homepage }}><span></span></span>
+      </div>
+      <div class="row">
+        <label for="feed_{{ c.id }}">{{ _("In the ICS feed") }}</label>
+        <span class="switch"><input id="feed_{{ c.id }}" type="checkbox" name="feed_{{ c.id }}" value="1" {{ 'checked' if c.feed }}><span></span></span>
+      </div>
+      {% set local, public = calendar_feeds[c.id] %}
+      <div class="row stack">
+        <label for="feed-local-{{ c.id }}">{{ _("This calendar alone (home network)") }}</label>
+        <div class="row" style="padding:0;min-height:0"><input class="mono" id="feed-local-{{ c.id }}" readonly value="{{ local }}"><button type="button" class="copy" data-copy="feed-local-{{ c.id }}">{{ _("Copy") }}</button></div>
+      </div>
+      {% if public %}
+      <div class="row stack">
+        <label for="feed-public-{{ c.id }}">{{ _("This calendar alone (public)") }}</label>
+        <div class="row" style="padding:0;min-height:0"><input class="mono" id="feed-public-{{ c.id }}" readonly value="{{ public }}"><button type="button" class="copy" data-copy="feed-public-{{ c.id }}">{{ _("Copy") }}</button></div>
+      </div>
+      {% endif %}
+      {% if c.kind != 'timetree' %}
+      <div class="row">
+        {% if c.kind == 'url' %}<button class="action" form="sources-form" name="refresh" value="{{ c.id }}">{{ _("Update now") }}</button>{% endif %}
+        <button class="action destructive" form="sources-form" name="remove" value="{{ c.id }}" onclick="return confirm(this.dataset.question)" data-question="{{ _('Remove this calendar?') }}">{{ _("Remove calendar") }}</button>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="card">
+      <div class="row">
+        <label for="calendar_tags">{{ _("Show the calendar name at each event") }}</label>
+        <span class="switch"><input id="calendar_tags" type="checkbox" name="calendar_tags" value="1" {{ 'checked' if s.calendar_tags }}><span></span></span>
+      </div>
+    </div>
+    <p>{{ _("Events keep the color they have in TimeTree. The color here is for events without one. The ICS feed holds every calendar switched on for it; each calendar also has a link of its own.") }}</p>
+  </form>
+  {% endif %}
+  <form id="sources-form" method="post" action="{{ url_for('admin.settings_sources') }}"></form>
+
+  <form method="post" action="{{ url_for('admin.settings_sources') }}" enctype="multipart/form-data" class="group" data-group="calendars">
+    <h2>{{ _("Add a calendar") }}</h2>
+    <div class="card">
+      <div class="row"><label for="source_name">{{ _("Name") }}</label><input id="source_name" name="name" maxlength="60" placeholder="{{ _('For example School holidays') }}"></div>
+      <div class="row"><label for="source_url">{{ _("Address") }}</label><input id="source_url" name="url" type="url" autocomplete="off" placeholder="https://… / webcal://…"></div>
+      <div class="row">
+        <label for="source_interval">{{ _("Update every") }}</label>
+        <select id="source_interval" name="interval">
+          {% for minutes, label in intervals %}<option value="{{ minutes }}" {{ 'selected' if minutes == url_minutes }}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="row stack">
+        <label for="source_file">{{ _("Or a calendar file (.ics)") }}</label>
+        <input id="source_file" type="file" name="file" accept=".ics,text/calendar">
+      </div>
+      <button class="action">{{ _("Add calendar") }}</button>
+    </div>
+    <p>{{ _("School holidays, public holidays, a shift plan or a school's events page: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.") }}</p>
+  </form>
+
   <form method="post" action="{{ url_for('admin.settings_display') }}" id="display" autocomplete="off">
-    <section class="group">
+    <section class="group" data-group="display">
       <h2>{{ _("Display") }}</h2>
       <div class="card">
         <div class="row">
@@ -80,13 +178,19 @@
           </div>
         </div>
         <div class="row">
+          <label for="upcoming_days">{{ _("Upcoming days") }}</label>
+          <select id="upcoming_days" name="upcoming_days">
+            {% for n in range(3, 15) %}<option value="{{ n }}" {{ 'selected' if n == s.upcoming_days }}>{{ n }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
           <label for="tasks_enabled">{{ _("Show tasks on the homepage") }}</label>
           <span class="switch"><input id="tasks_enabled" type="checkbox" name="tasks_enabled" value="1" {{ 'checked' if s.tasks_enabled }}><span></span></span>
         </div>
       </div>
     </section>
 
-    <section class="group">
+    <section class="group" data-group="display">
       <h2>{{ _("Time and date") }}</h2>
       <div class="card">
         <div class="row">
@@ -128,7 +232,7 @@
       </div>
     </section>
 
-    <section class="group">
+    <section class="group" data-group="display">
       <h2>{{ _("Greeting") }}</h2>
       <div class="card">
         <div class="row">
@@ -139,7 +243,7 @@
       </div>
     </section>
 
-    <section class="group">
+    <section class="group" data-group="weather">
       <h2>{{ _("Weather") }}</h2>
       <div class="card">
         <div class="row">
@@ -165,7 +269,7 @@
       </div>
     </section>
 
-    <section class="group">
+    <section class="group" data-group="background">
       <h2>{{ _("Background") }}</h2>
       <div class="card">
         <div class="row">
@@ -202,7 +306,7 @@
       <p>{{ _("Photos come from Lorem Picsum.") }}</p>
     </section>
 
-    <section class="group">
+    <section class="group" data-group="display">
       <h2>{{ _("Font") }}</h2>
       <div class="card">
         <div class="row">
@@ -225,7 +329,7 @@
     <noscript><button class="action">{{ _("Save") }}</button></noscript>
   </form>
 
-  <form method="post" action="{{ url_for('admin.settings_waste') }}" enctype="multipart/form-data" class="group" id="waste-form">
+  <form method="post" action="{{ url_for('admin.settings_waste') }}" enctype="multipart/form-data" class="group" data-group="waste" id="waste-form">
     <h2>{{ _("Waste collection") }}</h2>
     <div class="card">
       <div class="row">
@@ -250,7 +354,7 @@
     <p>{{ _("Each collection in the file gets its own color. The homepage shows a small bin next to the day.") }}</p>
   </form>
 
-  <form method="post" action="{{ url_for('admin.settings_notify') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_notify') }}" class="group" data-group="notify">
     <h2>{{ _("Notifications") }}</h2>
     <div class="card">
       <div class="row"><label for="notify_url">{{ _("Address") }}</label><input id="notify_url" name="notify_url" type="password" autocomplete="off" placeholder="{{ _('Address is stored') if s.has_notify_url else 'https://ntfy.sh/…' }}"></div>
@@ -273,7 +377,7 @@
     <p>{{ _("Daytree sends one message when syncing stops working and one when it works again. Use an ntfy topic, or a webhook that takes JSON with title and message.") }}</p>
   </form>
 
-  <section class="group">
+  <section class="group" data-group="calendars">
     <h2>{{ _("Calendar subscription") }}</h2>
     <div class="card">
       <div class="row stack">
@@ -288,7 +392,6 @@
       {% endif %}
       <form method="post" action="{{ url_for('admin.settings_save') }}" onsubmit="return confirm(this.dataset.question)" data-question="{{ _('The current URL stops working. Generate a new token?') }}">
         <input type="hidden" name="interval" value="{{ s.interval_minutes }}">
-        <input type="hidden" name="calendar_code" value="{{ s.calendar_code }}">
         <input type="hidden" name="new_token" value="1">
         <button class="action destructive">{{ _("Generate new token") }}</button>
       </form>
@@ -296,7 +399,7 @@
     <p>{{ _("Add this URL to your calendar app. Outlook on the web, Microsoft 365 and Google Calendar need the public URL.") }}</p>
   </section>
 
-  <form method="post" action="{{ url_for('admin.settings_tunnel') }}" class="group">
+  <form method="post" action="{{ url_for('admin.settings_tunnel') }}" class="group" data-group="tunnel">
     <h2>{{ _("Cloudflare tunnel") }}</h2>
     <div class="card">
       <div class="row"><span class="label">{{ _("Status") }}</span><span class="value">{{ _(tunnel.status|capitalize) }}{% if tunnel.error %} · {{ _(tunnel.error) }}{% endif %}</span></div>
@@ -316,7 +419,7 @@
     <p>{{ _("In Cloudflare, set the public hostname to the service HTTP and localhost:{port}.").format(port=8080) }}</p>
   </form>
 
-  <section class="group">
+  <section class="group" data-group="tunnel">
     <h2>{{ _("Reachable through the tunnel") }}</h2>
     <div class="card">
       {% for area, title, text in [('ics', _("ICS feed"), _("Calendar apps fetch the feed with its token.")), ('homepage', _("Homepage (read-only)"), _("The homepage and /kiosk, without tasks and settings.")), ('api', _("API"), _("Apps with an API token. Read-only tokens can only read."))] %}
@@ -332,7 +435,7 @@
     <p class="warn">{{ _("The homepage has no login of its own. If you expose it, protect the hostname with a Cloudflare Access policy.") }}</p>
   </section>
 
-  <section class="group">
+  <section class="group" data-group="security">
     <h2>{{ _("Padlock") }}</h2>
     <div class="card">
       <div class="row"><span class="label">{{ _("Status") }}</span><span class="value">{{ _("On") if lock_enabled else _("Off") }}</span></div>
@@ -348,7 +451,7 @@
     <p>{{ _("SETTINGS_LOCK in docker-compose.yml turns the padlock on. It closes by itself after 30 minutes without use.") }}</p>
   </section>
 
-  <section class="group" id="tokens">
+  <section class="group" data-group="security" id="tokens">
     <h2>{{ _("API tokens") }}</h2>
     {% if new_token %}
     <div class="card fresh">
@@ -383,7 +486,7 @@
     <p>{{ _("Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.") }}</p>
   </section>
 
-  <section class="group" id="backup">
+  <section class="group" data-group="backup" id="backup">
     <h2>{{ _("Backup") }}</h2>
     <div class="card">
       <form method="post" action="{{ url_for('admin.settings_backup') }}">
@@ -400,7 +503,7 @@
     <p>{{ _("The backup holds the settings with all credentials, the tasks and the waste calendar, encrypted with its own password. It does not need the key file, so it can also move Daytree to another server.") }}</p>
   </section>
 
-  <footer class="about">
+  <footer class="about" data-group="menu">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Daytree" width="56" height="56">
     <div class="links">
       <a href="https://github.com/storkakos/daytree" target="_blank" rel="noopener" aria-label="{{ _("Project website") }}" title="{{ _("Project website") }}">
@@ -424,15 +527,46 @@
   const notify = message => { if (top !== self) parent.postMessage(message, location.origin); };
   if (top !== self) {
     document.documentElement.classList.add('embedded');
-    document.querySelector('.bar a').addEventListener('click', event => { event.preventDefault(); notify('close-settings'); });
+    document.querySelector('.bar a').addEventListener('click', event => {
+      event.preventDefault();
+      if (!location.hash.slice(1)) notify('close-settings');
+    });
   }
   // A new token is shown once: reloading must not create another one
   if (document.getElementById('new-token')) history.replaceState(null, '', '{{ url_for('admin.settings_page') }}#tokens');
   // A saved form reloads this page, so the homepage around it hears about the change here
   if (location.search.includes('updated')) {
     notify('settings-changed');
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', location.pathname + location.hash);
   }
+
+  // Two steps: the menu, then one group. The group is the address's #part, so back and reloads keep it.
+  const menuTitles = Object.fromEntries([...document.querySelectorAll('#menu a')].map(a => [a.hash.slice(1), a.querySelector('span').textContent]));
+  const barLink = document.querySelector('.bar a'), barTitle = document.querySelector('.bar strong');
+  const homeLink = barLink.innerHTML, settingsTitle = barTitle.textContent;
+  let current = '';
+  function show() {
+    let id = location.hash.slice(1);
+    const target = id && !menuTitles[id] ? document.getElementById(id) : null;
+    if (target) id = target.closest('[data-group]')?.dataset.group || '';     // a part of a group, such as #tokens
+    current = menuTitles[id] ? id : '';
+    document.getElementById('menu').hidden = !!current;
+    document.querySelectorAll('[data-group]').forEach(node => { node.hidden = node.dataset.group !== (current || 'menu'); });
+    barLink.innerHTML = current ? '‹ ' + settingsTitle : homeLink;
+    barTitle.textContent = current ? menuTitles[current] : settingsTitle;
+    if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
+  }
+  barLink.addEventListener('click', event => {
+    if (!current) return;
+    event.preventDefault();
+    location.hash = '';
+  }, true);
+  // After a save the server sends the page again; the #part of the form's address brings the same group back
+  document.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => {
+    if (current) f.action = f.action.split('#')[0] + '#' + current;
+  }));
+  window.addEventListener('hashchange', show);
+  show();
   const form = document.getElementById('display');
   let timer;
   let queue = Promise.resolve();
@@ -453,6 +587,8 @@
     notify('settings-changed');
   }
   form.addEventListener('submit', event => event.preventDefault());
+  const calendarsForm = document.getElementById('calendars-form');
+  if (calendarsForm) calendarsForm.addEventListener('change', () => saveLater(calendarsForm));
   const wasteForm = document.getElementById('waste-form');
   // A new file changes the list of collections, so only that one reloads the page
   wasteForm.addEventListener('change', event => {

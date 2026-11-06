@@ -1,6 +1,7 @@
 """Storage: data paths, the encryption key, encrypted files, the settings and the time zone. No Flask in here."""
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -11,9 +12,10 @@ from cryptography.fernet import Fernet, InvalidToken
 
 DATA = Path(os.environ.get("DATA_DIR", "/data"))
 KEY_FILE = Path(os.environ.get("SECRET_KEY_FILE", "/secrets/secret.key"))
-ICS_FILE = DATA / "timetree.ics"
+CALENDAR_DIR = DATA / "calendars"          # one fully encrypted file per calendar: its ICS and the TimeTree colors
+LEGACY_ICS = DATA / "timetree.ics"         # up to 0.26: the one calendar, unencrypted -> migrated, then deleted
+LEGACY_COLORS = DATA / "event_colors.json"
 STATE_FILE = DATA / "state.json"
-COLORS_FILE = DATA / "event_colors.json"   # event UID -> TimeTree color, for the homepage only
 SETTINGS_FILE = DATA / "settings.enc"      # fully encrypted (Fernet)
 BACKGROUND_FILE = DATA / "background.json"   # current photos, so a restart does not change them
 WASTE_FILE = DATA / "waste.enc"            # waste collection calendar, fully encrypted (Fernet)
@@ -50,7 +52,7 @@ FERNET = Fernet(_load_key())
 
 
 def write_encrypted(path, value):
-    DATA.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "wb") as f:
@@ -71,9 +73,9 @@ def clamp(v):
 DEFAULTS = {
     "email": "",
     "password": "",
-    "calendar_code": "",
-    "calendar_name": "",
-    "calendars": [],            # [{"name": ..., "code": ...}] from the last login
+    "calendars": [],            # [{"name": ..., "code": ...}] TimeTree offers, from the last login
+    "sources": [],              # the calendars Daytree syncs, shows and serves; see new_source()
+    "calendar_tags": False,     # shows the calendar name at the end of each event on the homepage
     "interval_minutes": 180,
     "token": "",                # token embedded in the ICS URL
     "public_areas": [],         # subset of PUBLIC_AREAS for requests through the tunnel; empty = only /ping
@@ -90,6 +92,7 @@ DEFAULTS = {
     "time_format": "24",        # 24 | 12
     "date_style": "long",       # long | numeric
     "tasks_enabled": True,      # shows the tasks panel on the homepage
+    "upcoming_days": 7,         # days after today in the "Next days" list, 3 to 14
     "show_seconds": False,
     "clock_style": "digital",   # digital | analog
     "clock_size": 100,          # percent
@@ -158,14 +161,60 @@ def normalize(stored):
     if not s["token"]:
         s["token"] = secrets.token_urlsafe(24)
         dirty = True
+    code, name = s.pop("calendar_code", ""), s.pop("calendar_name", "")
+    if code and not s["sources"]:   # up to 0.26: one TimeTree calendar
+        s["sources"] = [new_source("timetree", name or code, code)]
+        dirty = True
+    # Ids become file names, so anything else than a plain id is dropped (a restored backup is outside data)
+    ids = set()
+    checked = []
+    for source in s["sources"] if isinstance(s["sources"], list) else []:
+        if (isinstance(source, dict) and isinstance(source.get("id"), str) and SOURCE_ID.fullmatch(source["id"])
+                and source.get("kind") in SOURCE_KINDS and isinstance(source.get("name"), str)
+                and source["id"] not in ids and (source["kind"] != "url" or isinstance(source.get("url"), str))):
+            ids.add(source["id"])
+            checked.append(source)
+    dirty = dirty or len(checked) != len(s["sources"])
+    s["sources"] = checked
+    for source in s["sources"]:
+        if source["kind"] == "url":
+            source["interval_minutes"] = clamp(source.get("interval_minutes", URL_MINUTES))
+        for key, value in SOURCE_DEFAULTS.items():
+            source.setdefault(key, value)
+        if not source.get("token"):
+            source["token"] = secrets.token_urlsafe(24)
+            dirty = True
     return s, dirty
+
+
+SOURCE_DEFAULTS = {"color": "", "feed": True, "homepage": True}
+SOURCE_KINDS = ("timetree", "file", "url")
+SOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+URL_MINUTES = 360               # how often a calendar from a URL is fetched unless chosen otherwise
+
+
+def new_source(kind, name, source_id=None, **extra):
+    """A calendar Daytree syncs. TimeTree calendars keep their code as id, so API addresses stay the same.
+    color: for events that bring none ("" = the homepage default); feed: part of /ics; homepage: shown there.
+    token: for its own feed at /ics/<id>, so sharing one calendar reveals no other.
+    kind "file" is an uploaded calendar; kind "url" also has url (may hold a private token) and interval_minutes."""
+    return {"id": source_id or secrets.token_hex(4), "kind": kind, "name": name, "token": secrets.token_urlsafe(24),
+            **SOURCE_DEFAULTS, **extra}
+
+
+def calendar_file(source_id):
+    return CALENDAR_DIR / f"{source_id}.enc"
+
+
+def timetree_sources():
+    return [s for s in settings["sources"] if s["kind"] == "timetree"]
 
 
 settings = load_settings()      # changed in place only, so every module shares the same dict
 
 
 def needs_setup():
-    return not (settings["email"] and settings["password"] and settings["calendar_code"])
+    return not (settings["email"] and settings["password"] and timetree_sources())
 
 
 # ---------------------------------------------------------------- time zone

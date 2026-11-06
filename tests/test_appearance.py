@@ -26,7 +26,7 @@ def test_fixed_look_everywhere(client, monkeypatch, value):
         # Browsers with their own dark mode must not recolor a fixed look
         assert f'<meta name="color-scheme" content="only {value}">' in client.get(path).data.decode()
     monkeypatch.setattr(auth, "SETTINGS_LOCK", True)
-    core.settings.update(calendar_code="fam123", lock_hash=auth.hash_password("correct horse"))
+    core.settings.update(sources=[core.new_source("timetree", "Family", "fam123")], lock_hash=auth.hash_password("correct horse"))
     page = client.get("/settings").data.decode()
     assert "Settings are locked" in page or "Einstellungen sind gesperrt" in page
     assert f'class="{value}"' in html_class(client, "/settings")

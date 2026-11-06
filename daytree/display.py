@@ -54,6 +54,11 @@ def view():
     v["has_lock_password"] = bool(settings["lock_hash"])
     v["has_notify_url"] = bool(settings["notify_url"])
     v["interval_label"] = hours(settings["interval_minutes"])
+    # A calendar URL can hold a private token: pages only see its host
+    v["sources"] = [{**{k: val for k, val in s.items() if k != "url"},
+                     "host": urllib.parse.urlsplit(s["url"]).hostname if s["kind"] == "url" else None} for s in settings["sources"]]
+    v["calendar_name"] = ", ".join(s["name"] for s in settings["sources"] if s["kind"] == "timetree")
+    v["timetree_codes"] = [s["id"] for s in settings["sources"] if s["kind"] == "timetree"]
     return v
 
 
@@ -80,6 +85,8 @@ def display_config():
         "clockStyle": settings["clock_style"],
         "clockSize": settings["clock_size"],
         "showTasks": settings["tasks_enabled"] and not is_public(),
+        "upcomingDays": settings["upcoming_days"],
+        "calendarTags": settings["calendar_tags"],
         "greeting": settings["greeting_enabled"],
         "name": "" if is_public() else settings["greeting_name"],
         "weather": settings["weather_enabled"],
@@ -124,7 +131,8 @@ def api_config():
 @bp.get("/api/events")
 def api_events():
     today = date.today()
-    return jsonify(events=as_json(occurrences(today, today + timedelta(days=8))), stale=freshness())
+    last = today + timedelta(days=settings["upcoming_days"] + 1)
+    return jsonify(events=as_json(occurrences(today, last)), stale=freshness())
 
 
 def freshness():
@@ -173,12 +181,13 @@ def waste_color(title):
 
 
 def waste_days():
-    """The bins to show on today and the 7 days after it, one entry per day."""
+    """The bins to show on today and the upcoming days after it, one entry per day."""
     today = date.today()
     early = timedelta(days=1 if settings["waste_day_before"] else 0)
-    days = {today + timedelta(days=i): [] for i in range(8)}
+    count = settings["upcoming_days"] + 1
+    days = {today + timedelta(days=i): [] for i in range(count)}
     calendar = waste_calendar()
-    for event in recurring_ical_events.of(calendar).between(today, today + timedelta(days=8) + early) if calendar else []:
+    for event in recurring_ical_events.of(calendar).between(today, today + timedelta(days=count) + early) if calendar else []:
         start = local_time(event.decoded("DTSTART"))
         day = (start.date() if isinstance(start, datetime) else start) - early
         title = str(event.get("SUMMARY", "")).strip()
@@ -265,7 +274,7 @@ def weather_icon(code, day=True):
 
 
 def forecast(data):
-    """The next 10 hours and 7 days from an Open-Meteo answer. Times stay local to the place."""
+    """The next 10 hours and every day from an Open-Meteo answer. Times stay local to the place."""
     now = data["current"].get("time", "")[:13]
     hourly, daily = data.get("hourly", {}), data.get("daily", {})
     hours = [
@@ -280,7 +289,7 @@ def forecast(data):
                                       daily.get("temperature_2m_min", []), daily.get("weather_code", []))
         if high is not None and low is not None
     ]
-    return {"hours": hours[:10], "days": days[:7]}
+    return {"hours": hours[:10], "days": days}
 
 
 @bp.get("/api/weather")
@@ -292,7 +301,7 @@ def api_weather():
         query = urllib.parse.urlencode({
             "latitude": lat, "longitude": lon, "current": "temperature_2m,weather_code,is_day",
             "hourly": "temperature_2m,weather_code,is_day", "daily": "weather_code,temperature_2m_max,temperature_2m_min",
-            "forecast_days": 8,
+            "forecast_days": 15,         # today and the longest upcoming range
             "temperature_unit": settings["weather_unit"], "timezone": "auto",
         })
         try:
@@ -306,4 +315,4 @@ def api_weather():
     text = next((t for t, codes in WEATHER_TEXT.items() if weather["code"] in codes), "Overcast")
     return jsonify(enabled=True, temperature=weather["temperature"], text=_(text), city=settings["weather_city"],
                    icon=weather_icon(weather["code"], weather["day"]),
-                   hours=weather["hours"], days=weather["days"])
+                   hours=weather["hours"], days=weather["days"][:settings["upcoming_days"]])

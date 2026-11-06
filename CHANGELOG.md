@@ -7,6 +7,79 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-06
+
+### Changed
+
+- The settings open on a short menu: TimeTree, Calendars, Display, Weather, Background, Waste collection,
+  Notifications, Cloudflare tunnel, Security and Backup. Each opens its own page, and after saving the same page
+  stays open. The browser's back button and the homepage's settings panel work with it.
+
+## [0.30.0] - 2026-11-06
+
+### Added
+
+- **School events pages:** an address under **Add a calendar** can also be a web page with a Contao calendar month
+  view, as many school websites have instead of a subscription. Daytree recognizes by the content whether an address
+  is an ICS file or such a page, reads the current month and the next three, and keeps each event's link. The
+  settings show which kind was found.
+
+## [0.29.0] - 2026-11-06
+
+### Added
+
+- Calendars can be renamed under **Calendars**. A TimeTree calendar keeps its new name when the list is loaded
+  again; the feed takes it over with the next sync.
+
+## [0.28.0] - 2026-11-06
+
+Calendars from other places.
+
+### Added
+
+- **Add a calendar:** from an address (`https://`, `http://` or `webcal://`) that Daytree fetches on its own
+  interval, or from an `.ics` file. Its events appear between the TimeTree events, with the same choices for color,
+  homepage and ICS feed, and a feed of their own. **Update now** fetches an address at once.
+- A calendar that cannot be fetched keeps its last events; the settings show the reason.
+- Backups include uploaded calendar files.
+
+### Security
+
+- A calendar address can hold a private key. It is stored encrypted, pages only show its host, and errors never
+  contain it.
+
+## [0.27.0] - 2026-11-06
+
+Several TimeTree calendars at once.
+
+### Added
+
+- **Several calendars:** tick any of your TimeTree calendars in the settings. They are synced one after the other;
+  a calendar that fails keeps its last events, and the error names it.
+- Under **Calendars**, per calendar: a color for events without one of their own (TimeTree colors stay), whether
+  the homepage shows it, and whether it is part of the ICS feed.
+- **Show the calendar name at each event:** a small tag on the homepage tells where an event comes from.
+- `/ics/<calendar>?token=…`: each calendar has a feed of its own with its own token, so sharing one reveals no
+  other. **Generate new token** renews all of them.
+- `/api/calendars` lists every calendar with its color.
+
+### Changed
+
+- `/ics` combines every calendar switched on for the feed, with each time zone once and unique event IDs. With one
+  calendar it is the same file as before.
+
+### Security
+
+- The synced calendars are stored encrypted. The unencrypted `timetree.ics` from earlier versions is moved into the
+  encrypted file on start and deleted.
+
+## [0.26.0] - 2026-11-06
+
+### Added
+
+- **Upcoming days** in the settings: the homepage lists 3 to 14 days after today instead of always 7. Waste bins
+  and the daily forecast follow it.
+
 ## [0.25.0] - 2026-11-06
 
 One port instead of two. **If you use the Cloudflare tunnel, change it when you update** (see below).
@@ -270,7 +343,13 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.25.0...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.31.0...dev
+[0.31.0]: https://github.com/storkakos/daytree/compare/v0.30.0...v0.31.0
+[0.30.0]: https://github.com/storkakos/daytree/compare/v0.29.0...v0.30.0
+[0.29.0]: https://github.com/storkakos/daytree/compare/v0.28.0...v0.29.0
+[0.28.0]: https://github.com/storkakos/daytree/compare/v0.27.0...v0.28.0
+[0.27.0]: https://github.com/storkakos/daytree/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/storkakos/daytree/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/storkakos/daytree/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/storkakos/daytree/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
