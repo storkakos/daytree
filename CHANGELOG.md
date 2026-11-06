@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-11-06
+
+### Changed
+
+- Daytree runs on Python 3.15 instead of 3.12.
+
 ## [0.24.1] - 2026-11-02
 
 ### Fixed
@@ -247,7 +253,8 @@ First public beta. Tested end to end with a real TimeTree account, a Cloudflare 
 - Subscribed calendars show all events in one color.
 - Behavior after a Cloudflare tunnel token is revoked has not been tested.
 
-[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.1...dev
+[Unreleased]: https://github.com/storkakos/daytree/compare/v0.24.2...dev
+[0.24.2]: https://github.com/storkakos/daytree/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/storkakos/daytree/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/storkakos/daytree/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/storkakos/daytree/compare/v0.22.0...v0.23.0

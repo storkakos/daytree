@@ -5,7 +5,7 @@
 ARG CLOUDFLARED_TAG=2026.10.7
 FROM cloudflare/cloudflared:${CLOUDFLARED_TAG} AS cloudflared
 
-FROM python:3.12-alpine
+FROM python:3.15-alpine
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
