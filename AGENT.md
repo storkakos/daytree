@@ -88,7 +88,7 @@ Cloudflare tunnel ──► :8081 (public)    ├─► gunicorn (1 worker, 4 th
 | `daytree/__init__.py` | `VERSION`. |
 | `templates/kiosk.html` | Homepage and `/kiosk`: agenda, week, tasks, reminders, weather forecast, waste collection and setup popup. Vanilla JS, responsive for landscape, portrait and phones. |
 | `templates/base.html`, `settings.html`, `locked.html` | Settings UI with sync status and the padlock page (server-rendered). Light/dark: class `light`/`dark` on `<html>` from the appearance setting, or no class to follow `prefers-color-scheme`; the dark colors are written once in a Jinja `set`. The homepage itself stays dark glass; only its setup popup and settings panel follow the setting. |
-| `Dockerfile` | `python:3.12-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
+| `Dockerfile` | `python:3.15-alpine`; copies the static `cloudflared` binary from the official image; non-root user `appuser` (uid 1000). |
 | `docker-compose.yml` | One service with both `image:` (prebuilt, `docker compose pull`) and `build: .` (from source, `--build`; the test box uses this); **named volumes** `daytree-data` (`/data`) and `daytree-secrets` (`/secrets`). Only port 8080 is published. |
 | `requirements.in` | Direct dependencies: `timetree-exporter`, `flask`, `gunicorn`, `icalendar`, `recurring-ical-events`, `cryptography`. |
 | `requirements.txt` | All pinned versions, generated from `requirements.in` with `pip-compile`. Do not edit by hand. |

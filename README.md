@@ -11,7 +11,7 @@ With tasks, reminders, a weather forecast, waste collection and beautiful photo 
 
 [![Release](https://img.shields.io/github/v/release/storkakos/daytree?include_prereleases&label=Release)](https://github.com/storkakos/daytree/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.15](https://img.shields.io/badge/Python-3.15-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 
 [Features](#features) ·
@@ -376,7 +376,7 @@ docker exec -i daytree python - < tests/port_check.py
 
 | Test | Requirements | Covers |
 |---|---|---|
-| `pytest` | Python 3.12; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, shared area and token. TimeTree, `cloudflared` and the web services are mocked. |
+| `pytest` | Python 3.15; Linux for file modes and the tunnel | Encryption, settings, the homepage data, ICS repair, tunnel handling, and a table of every route by side, shared area and token. TimeTree, `cloudflared` and the web services are mocked. |
 | `tests/port_check.py` | Running container, nothing or only the ICS feed shared | Internal and public port detection against real gunicorn. |
 
 `port_check.py` prints `ALL OK` on success. [`AGENT.md`](AGENT.md) contains the specification, the design decisions and the
