@@ -1,6 +1,7 @@
 """Storage: data paths, the encryption key, encrypted files, the settings and the time zone. No Flask in here."""
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -164,7 +165,20 @@ def normalize(stored):
     if code and not s["sources"]:   # up to 0.26: one TimeTree calendar
         s["sources"] = [new_source("timetree", name or code, code)]
         dirty = True
+    # Ids become file names, so anything else than a plain id is dropped (a restored backup is outside data)
+    ids = set()
+    checked = []
+    for source in s["sources"] if isinstance(s["sources"], list) else []:
+        if (isinstance(source, dict) and isinstance(source.get("id"), str) and SOURCE_ID.fullmatch(source["id"])
+                and source.get("kind") in SOURCE_KINDS and isinstance(source.get("name"), str)
+                and source["id"] not in ids and (source["kind"] != "url" or isinstance(source.get("url"), str))):
+            ids.add(source["id"])
+            checked.append(source)
+    dirty = dirty or len(checked) != len(s["sources"])
+    s["sources"] = checked
     for source in s["sources"]:
+        if source["kind"] == "url":
+            source["interval_minutes"] = clamp(source.get("interval_minutes", URL_MINUTES))
         for key, value in SOURCE_DEFAULTS.items():
             source.setdefault(key, value)
         if not source.get("token"):
@@ -174,14 +188,18 @@ def normalize(stored):
 
 
 SOURCE_DEFAULTS = {"color": "", "feed": True, "homepage": True}
+SOURCE_KINDS = ("timetree", "file", "url")
+SOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+URL_MINUTES = 360               # how often a calendar from a URL is fetched unless chosen otherwise
 
 
-def new_source(kind, name, source_id=None):
+def new_source(kind, name, source_id=None, **extra):
     """A calendar Daytree syncs. TimeTree calendars keep their code as id, so API addresses stay the same.
     color: for events that bring none ("" = the homepage default); feed: part of /ics; homepage: shown there.
-    token: for its own feed at /ics/<id>, so sharing one calendar reveals no other."""
+    token: for its own feed at /ics/<id>, so sharing one calendar reveals no other.
+    kind "file" is an uploaded calendar; kind "url" also has url (may hold a private token) and interval_minutes."""
     return {"id": source_id or secrets.token_hex(4), "kind": kind, "name": name, "token": secrets.token_urlsafe(24),
-            **SOURCE_DEFAULTS}
+            **SOURCE_DEFAULTS, **extra}
 
 
 def calendar_file(source_id):

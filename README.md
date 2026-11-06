@@ -65,6 +65,8 @@ Everything is behind the gear icon, saved immediately and shown live:
 
 - **Calendar sync:** imports one or more TimeTree calendars every 0.5 to 24 hours (default: 3 hours).
 - **Several calendars:** each with its own color for events without one, and optionally its name at every event.
+- **More calendars from files or URLs:** school holidays, public holidays or a shift plan, uploaded or fetched on an
+  interval you choose, shown between your TimeTree events.
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL, to all
   calendars in one feed or to each calendar on its own.
 - **Remote access:** an optional built-in Cloudflare tunnel. You choose what it shares: the ICS feed, the homepage,
@@ -145,6 +147,10 @@ Select the gear icon, copy the **ICS URL** from the **Calendar subscription** se
 The feed holds every calendar that has **In the ICS feed** switched on under **Calendars**. Each calendar also has
 a link of its own there, with its own token, so you can share one calendar without the others.
 
+Under **Add a calendar** you can add calendars from other places: an address such as `https://…` or `webcal://…`, which
+Daytree fetches on the interval you set, or an `.ics` file. The address is stored encrypted and never shown in full,
+since it can contain a private key. A calendar that cannot be fetched keeps its last events, and the settings show why.
+
 The sync interval controls how fresh the feed is. Your calendar app decides how often it fetches it, typically every
 few hours, so changes can take some time to appear there. The homepage updates after every sync.
 
@@ -213,8 +219,9 @@ Port 8080 serves the homepage and settings on your home network. Requests that c
 reach the same port, and the app answers them only for the shared areas, regardless of how the tunnel is configured
 in Cloudflare.
 
-Daytree calls a few outside services: TimeTree for your calendar, [Open-Meteo](https://open-meteo.com/) for weather if
-you turn it on, and [Lorem Picsum](https://picsum.photos/) for photos. Displays load the photos directly from Lorem
+Daytree calls a few outside services: TimeTree for your calendar, the addresses of calendars you add,
+[Open-Meteo](https://open-meteo.com/) for weather if you turn it on, and [Lorem Picsum](https://picsum.photos/) for
+photos. Displays load the photos directly from Lorem
 Picsum, and fonts other than the system font from Google Fonts.
 
 ## API
@@ -327,7 +334,8 @@ the settings, then turn the padlock on again.
 ## Backups and upgrades
 
 The easiest backup is in the settings, under **Backup**: enter a password and select **Download backup**. The file
-holds the settings with all credentials, the tasks and the waste calendar, encrypted with that password. It does not
+holds the settings with all credentials, the tasks, the waste calendar and uploaded calendar files, encrypted with
+that password. It does not
 need the key file, so it also moves Daytree to another server. To restore, choose the file, enter its password and
 select **Restore**. Daytree checks the whole file first and changes nothing if the password is wrong or the file is
 damaged. The calendar itself is synced again from TimeTree.

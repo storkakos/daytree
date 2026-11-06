@@ -59,6 +59,7 @@ TABLE = {
     ("GET", f"/ics/fam123?token={GOOD}"):        (200, 200, 404, 200, 404, 404),
     ("GET", f"/ics/fam123?token={BAD}"):         (403, 403, 404, 403, 404, 404),
     ("POST", "/settings/calendars"):             (OK, 403, 404, 404, 404, 404),
+    ("POST", "/settings/sources"):               (OK, 403, 404, 404, 404, 404),
 }
 SIDES = {
     "internal": {},

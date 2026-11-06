@@ -196,6 +196,28 @@ GERMAN = {
         "Termine behalten ihre Farbe aus TimeTree. Die Farbe hier gilt für Termine ohne eigene. Der ICS-Feed enthält jeden Kalender, der dafür eingeschaltet ist; jeder Kalender hat außerdem einen eigenen Link.",
     "This calendar appears on the homepage and in the ICS feed. More can be added in the settings later.":
         "Dieser Kalender erscheint auf der Startseite und im ICS-Feed. Weitere kannst du später in den Einstellungen hinzufügen.",
+    # Settings: calendars from files and URLs
+    "Add a calendar": "Kalender hinzufügen",
+    "Add calendar": "Kalender hinzufügen",
+    "Name": "Name",
+    "For example School holidays": "Zum Beispiel Schulferien",
+    "Update every": "Aktualisieren alle",
+    "Or a calendar file (.ics)": "Oder eine Kalenderdatei (.ics)",
+    "School holidays, public holidays or a shift plan: from an address that Daytree fetches regularly, or from a file. The address is stored encrypted, since it can contain a private key.":
+        "Schulferien, Feiertage oder ein Schichtplan: von einer Adresse, die Daytree regelmäßig abruft, oder aus einer Datei. Die Adresse wird verschlüsselt gespeichert, weil sie einen privaten Schlüssel enthalten kann.",
+    "Source": "Quelle",
+    "Uploaded file": "Hochgeladene Datei",
+    "Update now": "Jetzt aktualisieren",
+    "Remove this calendar?": "Diesen Kalender entfernen?",
+    "Calendar added.": "Kalender hinzugefügt.",
+    "Calendar updated.": "Kalender aktualisiert.",
+    "Calendar removed.": "Kalender entfernt.",
+    "Remove a calendar first.": "Entferne zuerst einen Kalender.",
+    "Could not load the calendar: {error}": "Der Kalender konnte nicht geladen werden: {error}",
+    "Choose a file or enter an address.": "Wähle eine Datei oder gib eine Adresse ein.",
+    "Enter an address that starts with https://, http:// or webcal://.": "Gib eine Adresse ein, die mit https://, http:// oder webcal:// beginnt.",
+    "The server did not answer in time.": "Der Server hat nicht rechtzeitig geantwortet.",
+    "The server could not be reached.": "Der Server war nicht erreichbar.",
     # Settings: appearance
     "Upcoming days": "Kommende Tage",
     "Appearance": "Darstellung",
@@ -252,7 +274,6 @@ GERMAN = {
     "Never used": "Nie genutzt",
     "Revoke this token? Apps using it lose access.": "Dieses Token widerrufen? Apps, die es nutzen, verlieren den Zugriff.",
     "Revoke": "Widerrufen",
-    "Name": "Name",
     "Access": "Zugriff",
     "Create token": "Token erstellen",
     "Apps send the token in the header Authorization: Bearer <token>. On the home network, reading needs no token, and writing from outside the homepage does.":

@@ -8,12 +8,16 @@ import time
 from datetime import date, datetime, timedelta, timezone
 
 import recurring_ical_events
+import requests
 from cryptography.fernet import InvalidToken
 from icalendar import Calendar
 
-from daytree import notify
+from daytree import VERSION, notify
 from daytree.core import (CALENDAR_DIR, DATA, LEGACY_COLORS, LEGACY_ICS, STATE_FILE, calendar_file, read_encrypted, settings,
                           timetree_sources, write_encrypted)
+
+MAX_SOURCE_BYTES = 5 * 1024 * 1024
+sources_lock = threading.Lock()  # one URL fetch at a time
 
 lock = threading.Lock()          # one sync at a time
 next_due = 0.0
@@ -57,6 +61,8 @@ def prune_calendars():
     for path in CALENDAR_DIR.glob("*.enc") if CALENDAR_DIR.exists() else []:
         if path.name not in keep:
             path.unlink(missing_ok=True)
+    for source_id in set(state.get("sources", {})) - {s["id"] for s in settings["sources"]}:
+        state["sources"].pop(source_id, None)
 
 
 def migrate_legacy():
@@ -194,6 +200,61 @@ def run_sync():
         lock.release()
 
 
+# ---------------------------------------------------------------- calendars from files and URLs
+def store_source(source, raw):
+    """Stores an uploaded or fetched calendar. Raises ValueError if it is not one."""
+    try:
+        if Calendar.from_ical(raw.decode("utf-8-sig", "replace")).name != "VCALENDAR":
+            raise ValueError
+    except ValueError:
+        raise ValueError("The file is not a usable calendar.")
+    save_calendar(source["id"], fix_ics(raw, source["name"]).decode("utf-8", "replace"), event_colors(raw))
+
+
+def fetch_url(source):
+    """Downloads a URL calendar and stores it. Errors never contain the URL, which can hold a private token."""
+    url = source["url"]
+    if url.lower().startswith("webcal://"):
+        url = "https://" + url[len("webcal://"):]
+    try:
+        with requests.get(url, timeout=30, stream=True, headers={"User-Agent": f"Daytree/{VERSION}"}) as response:
+            if response.status_code != 200:
+                raise ValueError(f"HTTP {response.status_code}")
+            raw = response.raw.read(MAX_SOURCE_BYTES + 1, decode_content=True)
+    except ValueError:
+        raise
+    except requests.Timeout:
+        raise ValueError("The server did not answer in time.") from None
+    except Exception:  # noqa: BLE001 - also errors while reading the body; the message must not carry the URL
+        raise ValueError("The server could not be reached.") from None
+    if len(raw) > MAX_SOURCE_BYTES:
+        raise ValueError("The file is too large.")
+    store_source(source, raw)
+
+
+def refresh(source):
+    """Fetches one URL calendar now and notes the result for the settings. Returns the error or None."""
+    with sources_lock:
+        status = state.setdefault("sources", {}).setdefault(source["id"], {})
+        status["last_run"] = time.time()
+        try:
+            fetch_url(source)
+            status.update(ok=True, message="OK", last_success=_now())
+        except ValueError as e:
+            status.update(ok=False, message=str(e))
+        _save_state()
+        return None if status["ok"] else status["message"]
+
+
+def refresh_due(now=None):
+    """Fetches every URL calendar whose interval has passed since its last attempt."""
+    now = now or time.time()
+    for source in [s for s in settings["sources"] if s["kind"] == "url"]:
+        last = state.get("sources", {}).get(source["id"], {}).get("last_run", 0)
+        if now >= last + source["interval_minutes"] * 60:
+            refresh(source)
+
+
 def scheduler():
     """Every 10 s check whether the next sync is due; interval changes take effect immediately."""
     global next_due
@@ -203,6 +264,10 @@ def scheduler():
         if time.time() >= next_due:
             next_due = time.time() + settings["interval_minutes"] * 60
             run_sync()
+        try:
+            refresh_due()
+        except Exception:  # noqa: BLE001 - one broken calendar must not stop the scheduler
+            pass
         time.sleep(10)
 
 
