@@ -33,14 +33,12 @@ def ics_urls(path=None):
 
 def select_timetree(codes):
     """Makes the TimeTree calendars with these codes the selected ones, in TimeTree's order. Calendars that stay
-    selected keep their color, switches and token."""
+    selected keep their name, color, switches and token."""
     current = {s["id"]: s for s in timetree_sources()}
     chosen = []
     for calendar in settings["calendars"]:
         if calendar["code"] in codes:
-            source = current.get(calendar["code"]) or new_source("timetree", calendar["name"], calendar["code"])
-            source["name"] = calendar["name"]
-            chosen.append(source)
+            chosen.append(current.get(calendar["code"]) or new_source("timetree", calendar["name"], calendar["code"]))
     settings["sources"] = chosen + [s for s in settings["sources"] if s["kind"] != "timetree"]
 
 
@@ -136,8 +134,11 @@ def settings_save():
 
 @bp.post("/settings/calendars")
 def settings_calendars():
-    """Per calendar: its color, whether the homepage shows it and whether it is part of /ics. And the name tags."""
+    """Per calendar: its name, color, whether the homepage shows it and whether it is part of /ics. And the name tags."""
     for source in settings["sources"]:
+        name = request.form.get(f"name_{source['id']}", "").strip()[:60]
+        if name:
+            source["name"] = name
         color = request.form.get(f"color_{source['id']}", "")
         if re.fullmatch(r"#[0-9a-fA-F]{6}", color) and not (color == DEFAULT_COLOR and not source["color"]):
             source["color"] = color.lower()

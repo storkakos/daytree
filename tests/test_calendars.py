@@ -147,6 +147,17 @@ def test_calendar_options(client, two):
     assert core.settings["sources"][1]["color"] == "#aabbcc" and core.settings["calendar_tags"] is False
 
 
+def test_rename(client, two):
+    family, work = two
+    client.post("/settings/calendars", data={"name_fam123": "  Home  ", "name_work9": "", "feed_fam123": "1"}, headers=ORIGIN)
+    assert [s["name"] for s in core.settings["sources"]] == ["Home", "Work"]          # empty keeps the name
+    client.post("/settings/calendars", data={"name_fam123": "x" * 99}, headers=ORIGIN)
+    assert core.settings["sources"][0]["name"] == "x" * 60
+    client.post("/settings/save", data={"calendars_form": "1", "calendar": ["fam123", "work9"], "interval": "180"}, headers=ORIGIN)
+    assert core.settings["sources"][0]["name"] == "x" * 60                           # TimeTree's name does not come back
+    assert 'name="name_work9" value="Work"' in client.get("/settings").data.decode()
+
+
 def test_new_token_renews_every_feed(client, two):
     family, work = two
     old = {core.settings["token"], family["token"], work["token"]}

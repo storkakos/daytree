@@ -64,7 +64,7 @@ Everything is behind the gear icon, saved immediately and shown live:
 ### Under the hood
 
 - **Calendar sync:** imports one or more TimeTree calendars every 0.5 to 24 hours (default: 3 hours).
-- **Several calendars:** each with its own color for events without one, and optionally its name at every event.
+- **Several calendars:** each with a name you can change, its own color for events without one, and optionally its name at every event.
 - **More calendars from files or URLs:** school holidays, public holidays or a shift plan, uploaded or fetched on an
   interval you choose, shown between your TimeTree events.
 - **Private ICS feed:** subscribe from Outlook, Google Calendar or Apple Calendar through a secret URL, to all
