@@ -184,6 +184,9 @@ GERMAN = {
     "Until a password is set, anyone on your home network can set one. The settings need it from then on.":
         "Solange kein Passwort festgelegt ist, kann es jeder in deinem Heimnetz festlegen. Danach brauchen die Einstellungen es.",
     "Unlock": "Entsperren",
+    # Settings: menu
+    "TimeTree": "TimeTree",
+    "Security": "Sicherheit",
     # Settings: calendars
     "Calendars": "Kalender",
     "Choose at least one calendar.": "Wähle mindestens einen Kalender.",
